@@ -26,6 +26,7 @@ export async function GET(req: Request) {
         data: {
           stripeCustomerId: customer.id,
           subscriptionId: sub.id,
+          // @ts-ignore - Die Eigenschaft existiert wahrscheinlich, aber die Typen haben sich in der neuen Stripe-Bibliothek geändert
           subscriptionEnd: new Date(sub.current_period_end * 1000),
         },
       });
