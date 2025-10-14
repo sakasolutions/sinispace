@@ -1,12 +1,15 @@
-// components/Features.tsx
 "use client";
-import { motion } from "framer-motion";
+// 1. KORREKTUR: Wir importieren den "Variants"-Typ
+import { motion, type Variants } from "framer-motion";
 
-const container = {
+// 2. KORREKTUR: Wir weisen den "Variants"-Typ explizit zu
+const container: Variants = {
   hidden: {},
   show: { transition: { staggerChildren: 0.08 } },
 };
-const item = {
+
+// 3. KORREKTUR: Wir weisen auch hier den "Variants"-Typ zu
+const item: Variants = {
   hidden: { opacity: 0, y: 18 },
   show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
 };
