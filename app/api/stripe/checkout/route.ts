@@ -4,9 +4,11 @@ import { prisma } from '@/lib/prisma';
 import { ensureUser } from '@/lib/auth';
 import Stripe from 'stripe';
 
+export const runtime = 'nodejs'; // wichtig für Stripe SDK
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-06-20' });
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const user = await ensureUser();
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
@@ -26,10 +28,8 @@ export async function POST() {
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
-      customer: customerId,
-      line_items: [
-        { price: process.env.STRIPE_PRICE_YEARLY!, quantity: 1 },
-      ],
+      customer: customerId!,
+      line_items: [{ price: process.env.STRIPE_PRICE_YEARLY!, quantity: 1 }],
       allow_promotion_codes: true,
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/api/stripe/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/settings`,

@@ -4,13 +4,17 @@ import { prisma } from '@/lib/prisma';
 import { ensureUser } from '@/lib/auth';
 import Stripe from 'stripe';
 
+export const runtime = 'nodejs';
+
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-06-20' });
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
     const user = await ensureUser();
     const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
-    if (!dbUser?.subscriptionId) return NextResponse.json({ error: 'Kein aktives Abo' }, { status: 400 });
+    if (!dbUser?.subscriptionId) {
+      return NextResponse.json({ error: 'Kein aktives Abo' }, { status: 400 });
+    }
 
     const updated = await stripe.subscriptions.update(dbUser.subscriptionId, { cancel_at_period_end: true });
     return NextResponse.json({ ok: true, cancelAtPeriodEnd: updated.cancel_at_period_end });
