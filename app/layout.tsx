@@ -1,17 +1,12 @@
-// app/layout.tsx
-
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+// Geist-Schriftarten wurden durch 'Inter' ersetzt, die von Next.js v14 unterstützt wird.
+import { Inter } from "next/font/google";
 import "./globals.css";
-import { AuthProvider } from "@/context/AuthContext"; // <-- 1. HINZUGEFÜGT
+import { AuthProvider } from "@/context/AuthContext";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+// Initialisierung der Inter-Schriftart mit einem CSS-Variablennamen
+const inter = Inter({
+  variable: "--font-sans", // Wir definieren eine CSS-Variable für die Hauptschriftart
   subsets: ["latin"],
 });
 
@@ -23,14 +18,17 @@ export const metadata: Metadata = {
 export default function RootLayout({
   children,
 }: Readonly<{
-  children: React.ReactNode;
+  children: React.Node;
 }>) {
   return (
     <html lang="de">
+      {/* Die Klassen für Geist Sans und Geist Mono wurden durch die Variable für Inter ersetzt.
+        Globale Stile (in globals.css) müssen möglicherweise angepasst werden, 
+        um var(--font-sans) anstelle der alten Geist-Variablen zu verwenden.
+      */}
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-slate-50 text-slate-800`}
+        className={`${inter.variable} antialiased bg-slate-50 text-slate-800`}
       >
-        {/* 2. HINZUGEFÜGT: Der AuthProvider umschließt jetzt deine gesamte App */}
         <AuthProvider>
           {children}
         </AuthProvider>

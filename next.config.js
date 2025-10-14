@@ -1,9 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // WICHTIG: top-level, nicht unter "experimental"
-  turbopack: {
-    root: __dirname,
-  },
+  // Die 'turbopack'-Option wurde entfernt, da sie in Next.js v14 nicht erkannt wird.
+  // Weitere Konfigurationen können hier bei Bedarf hinzugefügt werden.
 };
 
 module.exports = nextConfig;
