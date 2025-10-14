@@ -1,4 +1,7 @@
 // app/api/stripe/checkout/route.ts
+
+
+
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ensureUser } from '@/lib/auth';
