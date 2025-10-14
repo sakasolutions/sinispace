@@ -1,0 +1,21 @@
+// app/api/stripe/cancel/route.ts
+import { NextResponse } from 'next/server';
+import { prisma } from '@/lib/prisma';
+import { ensureUser } from '@/lib/auth';
+import Stripe from 'stripe';
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, { apiVersion: '2024-06-20' });
+
+export async function POST() {
+  try {
+    const user = await ensureUser();
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+    if (!dbUser?.subscriptionId) return NextResponse.json({ error: 'Kein aktives Abo' }, { status: 400 });
+
+    const updated = await stripe.subscriptions.update(dbUser.subscriptionId, { cancel_at_period_end: true });
+    return NextResponse.json({ ok: true, cancelAtPeriodEnd: updated.cancel_at_period_end });
+  } catch (e) {
+    console.error('cancel error', e);
+    return NextResponse.json({ error: 'Internal error' }, { status: 500 });
+  }
+}
