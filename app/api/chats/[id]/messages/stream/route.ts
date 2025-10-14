@@ -7,13 +7,17 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { readFile } from 'fs/promises';
 import path from 'path';
 
-// Prisma braucht Node
+// Prisma/Streaming brauchen Node
 export const runtime = 'nodejs';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-/** ---- Markdown-Bilder (![alt](url)) extrahieren ---- */
+const getId = (ctx: any) => {
+  const v = ctx?.params?.id;
+  return Array.isArray(v) ? v[0] : v;
+};
+
 function extractImageUrls(text: string) {
   const urls: string[] = [];
   const re = /!\[[^\]]*\]\((?<url>[^)]+)\)/g;
@@ -25,7 +29,6 @@ function extractImageUrls(text: string) {
   return urls;
 }
 
-/** ---- Mime-Erkennung über Dateiendung ---- */
 function guessMimeFromExt(ext: string) {
   const e = ext.toLowerCase().replace('.', '');
   if (e === 'png') return 'image/png';
@@ -35,18 +38,12 @@ function guessMimeFromExt(ext: string) {
   return 'application/octet-stream';
 }
 
-/** ---- Lokale /uploads/... in Base64 laden (für Gemini inlineData) ---- */
 async function toInlineDataFromLocalUpload(urlPath: string) {
-  // erwartet Pfade wie /uploads/abc.png (liegt unter public/uploads)
   const full = path.join(process.cwd(), 'public', decodeURIComponent(urlPath.replace(/^\/+/, '')));
   const buf = await readFile(full);
-  return {
-    data: buf.toString('base64'),
-    mimeType: guessMimeFromExt(path.extname(full)),
-  };
+  return { data: buf.toString('base64'), mimeType: guessMimeFromExt(path.extname(full)) };
 }
 
-/** ---- Für OpenAI: data:URL erstellen (funktioniert lokal/offline) ---- */
 async function toDataUrlFromLocalUpload(urlPath: string) {
   const full = path.join(process.cwd(), 'public', decodeURIComponent(urlPath.replace(/^\/+/, '')));
   const buf = await readFile(full);
@@ -54,8 +51,11 @@ async function toDataUrlFromLocalUpload(urlPath: string) {
   return `data:${mime};base64,${buf.toString('base64')}`;
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: Request, ctx: any) {
   try {
+    const chatId = getId(ctx);
+    if (!chatId) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
     const body = (await req.json()) as {
       model?: 'gpt-4o-mini' | 'gemini-1.5-pro';
       messages: Array<{ id?: string; role: 'user' | 'assistant' | 'system'; content: string }>;
@@ -63,7 +63,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     const user = await ensureUser();
     const chat = await prisma.chat.findFirst({
-      where: { id: params.id, userId: user.id },
+      where: { id: chatId, userId: user.id },
       select: { id: true, model: true },
     });
     if (!chat) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -78,12 +78,8 @@ export async function POST(req: Request, { params }: { params: { id: string } })
       return NextResponse.json({ error: 'Last message must be user' }, { status: 400 });
     }
 
-    // 1) User-Message persistieren
-    await prisma.message.create({
-      data: { chatId: chat.id, role: 'user', content: last.content },
-    });
+    await prisma.message.create({ data: { chatId: chat.id, role: 'user', content: last.content } });
 
-    // 2) Stream aufsetzen
     let assistantText = '';
 
     const stream = new ReadableStream({
@@ -94,12 +90,10 @@ export async function POST(req: Request, { params }: { params: { id: string } })
           const imageUrls = extractImageUrls(last.content);
 
           if (chosen.startsWith('gpt')) {
-            // ===== OpenAI (Vision via data:URL oder http(s)) =====
             const parts: any[] = [{ type: 'text', text: last.content }];
             for (const url of imageUrls) {
-              if (/^https?:\/\//i.test(url)) {
-                parts.push({ type: 'image_url', image_url: { url } });
-              } else if (url.startsWith('/uploads/')) {
+              if (/^https?:\/\//i.test(url)) parts.push({ type: 'image_url', image_url: { url } });
+              else if (url.startsWith('/uploads/')) {
                 const dataUrl = await toDataUrlFromLocalUpload(url);
                 parts.push({ type: 'image_url', image_url: { url: dataUrl } });
               }
@@ -124,21 +118,15 @@ export async function POST(req: Request, { params }: { params: { id: string } })
               }
             }
           } else {
-            // ===== Gemini 1.5 Pro (Vision via inlineData) =====
             const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
-
-            // Baue Parts für den letzten User-Turn: Text + Bilder als inlineData
             const userParts: any[] = [{ text: last.content }];
             for (const url of imageUrls) {
               if (url.startsWith('/uploads/')) {
                 const inlineData = await toInlineDataFromLocalUpload(url);
                 userParts.push({ inlineData });
               }
-              // http(s) extern: optional nachladen – für lokalen Dev i. d. R. nicht erreichbar
-              // else if (/^https?:\/\//i.test(url)) { /* hier könntest du fetchen & base64n */ }
             }
 
-            // Mappe Historie (Gemini-Rollen: 'user' | 'model')
             const contents = [
               ...body.messages.slice(0, -1).map((m) => ({
                 role: m.role === 'assistant' ? 'model' : m.role,
@@ -158,7 +146,6 @@ export async function POST(req: Request, { params }: { params: { id: string } })
             }
           }
 
-          // 3) Assistant-Antwort persistieren
           await prisma.message.create({
             data: { chatId: chat.id, role: 'assistant', content: assistantText, model: chosen },
           });
@@ -182,7 +169,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
         'X-Accel-Buffering': 'no',
       },
     });
-  } catch (e: any) {
+  } catch (e) {
     console.error('POST /api/chats/[id]/messages/stream error:', e);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }

@@ -1,18 +1,27 @@
 // app/api/chats/[id]/messages/route.ts
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ensureUser } from '@/lib/auth';
 
-// WICHTIG: Keine Edge-Runtime hier, Prisma braucht Node
+// Prisma braucht Node
 export const runtime = 'nodejs';
 
-export async function GET(_req: Request, { params }: { params: { id: string } }) {
+// Der Typ für den zweiten Parameter, der die Routen-Parameter enthält
+type RouteContext = {
+  params: {
+    id: string;
+  };
+};
+
+export async function GET(_req: NextRequest, { params }: RouteContext) {
   try {
+    const { id } = params; // Direkter Zugriff auf die ID, viel sauberer!
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
     const user = await ensureUser();
 
-    // gehört der Chat dem User?
     const chat = await prisma.chat.findFirst({
-      where: { id: params.id, userId: user.id },
+      where: { id, userId: user.id },
       select: { id: true },
     });
     if (!chat) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -23,19 +32,21 @@ export async function GET(_req: Request, { params }: { params: { id: string } })
     });
 
     return NextResponse.json(messages);
-  } catch (e: any) {
+  } catch (e) {
     console.error('GET /api/chats/[id]/messages error:', e);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
-export async function POST(req: Request, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: RouteContext) {
   try {
+    const { id } = params; // Auch hier direkter Zugriff
+    if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+
     const user = await ensureUser();
 
-    // gehört der Chat dem User?
     const chat = await prisma.chat.findFirst({
-      where: { id: params.id, userId: user.id },
+      where: { id, userId: user.id },
       select: { id: true },
     });
     if (!chat) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -51,16 +62,11 @@ export async function POST(req: Request, { params }: { params: { id: string } })
     }
 
     const msg = await prisma.message.create({
-      data: {
-        chatId: chat.id,
-        role,
-        content,
-        model,
-      },
+      data: { chatId: chat.id, role, content, model },
     });
 
     return NextResponse.json(msg, { status: 201 });
-  } catch (e: any) {
+  } catch (e) {
     console.error('POST /api/chats/[id]/messages error:', e);
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
