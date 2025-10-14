@@ -123,4 +123,4 @@ export default function Hero() {
   );
 }
 
-// Finaler Deploy, jetzt aber wirklich!
+// Finaler Deploy, jetzt aber wirklich
