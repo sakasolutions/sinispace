@@ -6,16 +6,13 @@ import { ensureUser } from '@/lib/auth';
 // Prisma braucht Node
 export const runtime = 'nodejs';
 
-// Der Typ für den zweiten Parameter, der die Routen-Parameter enthält
-type RouteContext = {
-  params: {
-    id: string;
-  };
-};
-
-export async function GET(_req: NextRequest, { params }: RouteContext) {
+// Wir definieren den Typ jetzt direkt in der Funktion unten
+export async function GET(
+  _req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
-    const { id } = params; // Direkter Zugriff auf die ID, viel sauberer!
+    const { id } = params; // Direkter Zugriff auf die ID
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
     const user = await ensureUser();
@@ -38,7 +35,11 @@ export async function GET(_req: NextRequest, { params }: RouteContext) {
   }
 }
 
-export async function POST(req: NextRequest, { params }: RouteContext) {
+// Wir definieren den Typ auch hier direkt in der Funktion
+export async function POST(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
   try {
     const { id } = params; // Auch hier direkter Zugriff
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
