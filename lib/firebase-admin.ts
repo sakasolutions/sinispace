@@ -1,11 +1,15 @@
-// lib/firebase-admin.ts
 import admin from 'firebase-admin';
 
 if (!admin.apps.length) {
   try {
-    const serviceAccount = JSON.parse(
-      process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string
-    );
+    // Diese Zeile ist der Schlüssel zum Sieg!
+    // Sie packt den sicheren Schlüssel aus, bevor er verwendet wird.
+    const serviceAccountString = Buffer.from(
+      process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string,
+      'base64'
+    ).toString('utf-8');
+
+    const serviceAccount = JSON.parse(serviceAccountString);
 
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount),
