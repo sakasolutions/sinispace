@@ -5,16 +5,18 @@ import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import { app } from '@/lib/firebase';
 import { useRouter } from 'next/navigation';
 
+// 1. KORREKTUR: "logout" zu "signOut" im Typ umbenannt
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  logout: () => Promise<void>;
+  signOut: () => Promise<void>; 
 }
 
+// 2. KORREKTUR: "logout" zu "signOut" im Standardwert umbenannt
 const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
-  logout: async () => {},
+  signOut: async () => {},
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
@@ -42,12 +44,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => unsubscribe();
   }, [auth]);
 
-  const logout = async () => {
+  // 3. KORREKTUR: Die Funktion selbst umbenannt
+  const signOut = async () => {
     await auth.signOut();
     router.push('/login');
   };
 
-  const value = { user, loading, logout };
+  // 4. KORREKTUR: Die Eigenschaft im Wert-Objekt umbenannt
+  const value = { user, loading, signOut };
 
   return (
     <AuthContext.Provider value={value}>
