@@ -3,7 +3,7 @@ import admin from 'firebase-admin';
 if (!admin.apps.length) {
   try {
     const serviceAccountString = Buffer.from(
-      process.env.FIREBASE_SERVICE_ACCOUNT_KEY as string,
+      process.env.GCP_SA_B64 as string,
       'base64'
     ).toString('utf-8');
 
