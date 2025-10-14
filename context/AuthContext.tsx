@@ -32,13 +32,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       if (currentUser) {
         const idToken = await currentUser.getIdToken();
-        await fetch('/api/auth/session', {
+        await fetch('/api/auth/sessions', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken }),
         });
       } else {
-        await fetch('/api/auth/session', { method: 'DELETE' });
+        await fetch('/api/auth/sessions', { method: 'DELETE' });
       }
     });
     return () => unsubscribe();
