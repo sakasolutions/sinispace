@@ -122,3 +122,5 @@ export default function Hero() {
     </motion.section>
   );
 }
+
+// Finaler Deploy, jetzt aber wirklich!
