@@ -1,11 +1,12 @@
-// components/Hero.tsx
 "use client";
 
 import Link from "next/link";
 import Image from "next/image";
-import { motion } from "framer-motion";
+// 1. KORREKTUR: Wir importieren den "MotionProps"-Typ
+import { motion, type MotionProps } from "framer-motion";
 
-const fadeUp = (d = 0) => ({
+// 2. KORREKTUR: Wir weisen den "MotionProps"-Typ als Rückgabetyp der Funktion zu
+const fadeUp = (d = 0): MotionProps => ({
   initial: { opacity: 0, y: 24 },
   animate: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut", delay: d } },
 });
