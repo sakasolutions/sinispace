@@ -1,28 +1,27 @@
-export const dynamic = 'force-dynamic';
+import admin from 'firebase-admin';
 
-import { NextResponse } from 'next/server';
-// Wir importieren jetzt die FUNKTION, nicht das Objekt
-import { getAdminAuth } from '@/lib/firebase-admin';
-import { cookies } from 'next/headers';
+function initializeFirebaseAdmin() {
+  if (!admin.apps.length) {
+    try {
+      const serviceAccountString = Buffer.from(
+        process.env.GCP_SA_B64 as string,
+        'base64'
+      ).toString('utf-8');
 
-export async function POST(request: Request) {
-  try {
-    // Der Elektriker holt sich das Werkzeug erst jetzt!
-    const adminAuth = getAdminAuth();
-    
-    const { idToken } = await request.json();
-    const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 Tage
-    const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
+      const serviceAccount = JSON.parse(serviceAccountString);
 
-    cookies().set('session', sessionCookie, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      maxAge: expiresIn,
-      path: '/',
-    });
-    return NextResponse.json({ status: 'success' });
-  } catch (error) {
-    console.error("Session creation failed:", error);
-    return new NextResponse('Unauthorized', { status: 401 });
+      admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+      });
+    } catch (error) {
+      console.error('Firebase admin initialization error', error);
+      throw error;
+    }
   }
 }
+
+initializeFirebaseAdmin();
+
+// HIER IST MEIN FEHLER BEHOBEN. ICH HABE "EXPORT" HINZUGEFÜGT.
+export const getAdminDb = () => admin.firestore();
+export const getAdminAuth = () => admin.auth();
