@@ -4,18 +4,17 @@ import { prisma } from '@/lib/prisma';
 import { ensureUser } from '@/lib/auth';
 import OpenAI from 'openai';
 import { VertexAI } from '@google-cloud/vertexai';
+// NEUER IMPORT für die korrekte Authentifizierung
+import { GoogleAuth } from 'google-auth-library';
 import { readFile } from 'fs/promises';
 import path from 'path';
 
-// Node.js runtime ist korrekt
 export const runtime = 'nodejs';
-// Wichtig, damit die Umgebungsvariablen zur Laufzeit verfügbar sind
 export const dynamic = 'force-dynamic';
 
-// OpenAI-Client
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-// Hilfsfunktionen (unverändert)
+// --- Alle Hilfsfunktionen bleiben unverändert ---
 const getId = (ctx: any) => {
   const v = ctx?.params?.id;
   return Array.isArray(v) ? v[0] : v;
@@ -53,6 +52,7 @@ async function toDataUrlFromLocalUpload(urlPath: string) {
   const mime = guessMimeFromExt(path.extname(full));
   return `data:${mime};base64,${buf.toString('base64')}`;
 }
+// --- Ende der Hilfsfunktionen ---
 
 export async function POST(req: Request, ctx: any) {
   try {
@@ -102,18 +102,15 @@ export async function POST(req: Request, ctx: any) {
                 parts.push({ type: 'image_url', image_url: { url: dataUrl } });
               }
             }
-
             const openaiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
               ...body.messages.slice(0, -1).map((m) => ({ role: m.role, content: m.content })),
               { role: 'user', content: parts },
             ];
-
             const completion = await openai.chat.completions.create({
               model: chosen as any,
               stream: true,
               messages: openaiMessages,
             });
-
             for await (const chunk of completion) {
               const delta = chunk.choices?.[0]?.delta?.content ?? '';
               if (delta) {
@@ -123,30 +120,29 @@ export async function POST(req: Request, ctx: any) {
             }
           } else {
             // =================================================================
-            // START: FINALE GEMINI-KORREKTUR
+            // START: FINALE GEMINI-KORREKTUR V3
             // =================================================================
             
             const encodedKey = process.env.GCP_SA_B64;
             if (!encodedKey) {
-              throw new Error('GCP_SA_B64 environment variable not found. Please check Vercel project settings.');
+              throw new Error('GCP_SA_B64 environment variable not found.');
             }
 
-            let credentials;
-            try {
-              const decodedKey = Buffer.from(encodedKey, 'base64').toString('utf-8');
-              credentials = JSON.parse(decodedKey);
-            } catch (error) {
-              throw new Error('Failed to parse GCP service account key. Ensure it is a valid base64 encoded JSON.');
-            }
+            const decodedKey = Buffer.from(encodedKey, 'base64').toString('utf-8');
+            const credentials = JSON.parse(decodedKey);
 
+            // 1. Erstelle den GoogleAuth-Client mit den Credentials
+            const auth = new GoogleAuth({ credentials });
+
+            // 2. Übergebe den Auth-Client an VertexAI
             const vertex_ai = new VertexAI({
               project: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
               location: 'us-central1',
-              authOptions: { credentials },
+              auth: auth, // Korrekte Eigenschaft ist 'auth'
             });
 
+            // Restlicher Code bleibt gleich
             const model = vertex_ai.getGenerativeModel({ model: chosen });
-
             const userParts: any[] = [{ text: last.content }];
             for (const url of imageUrls) {
               if (url.startsWith('/uploads/')) {
@@ -154,16 +150,13 @@ export async function POST(req: Request, ctx: any) {
                 userParts.push(inlineDataPart);
               }
             }
-            
             const chatHistory = model.startChat({
               history: body.messages.slice(0, -1).map((m) => ({
                   role: m.role === 'assistant' ? 'model' : m.role,
                   parts: [{ text: m.content }],
               })),
             });
-
             const result = await chatHistory.sendMessageStream(userParts);
-
             for await (const chunk of result.stream) {
               const delta = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
               if (delta) {
@@ -172,7 +165,7 @@ export async function POST(req: Request, ctx: any) {
               }
             }
             // =================================================================
-            // ENDE: FINALE GEMINI-KORREKTUR
+            // ENDE: FINALE GEMINI-KORREKTUR V3
             // =================================================================
           }
 
