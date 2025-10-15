@@ -15,7 +15,7 @@ export const dynamic = 'force-dynamic';
 
 // Der OpenAI-Client bleibt, wie er ist. Perfekt.
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-// 2. ÄNDERUNG: Die statische Initialisierung des alten Google-Clients wird entfernt.
+// 2. ÄNDERung: Die statische Initialisierung des alten Google-Clients wird entfernt.
 // const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
 // Alle deine Hilfsfunktionen bleiben exakt gleich. Sie sind perfekt.
@@ -127,10 +127,24 @@ export async function POST(req: Request, ctx: any) {
           } else {
             // 3. GROSSE KORREKTUR: HIER TAUSCHEN WIR DEN GEMINI-MOTOR AUS
             
-            // Initialisiere den KORREKTEN Vertex AI Client
+            // 4. FINALE KORREKTUR: Authentifizierung des Vertex AI Clients mit dem Service Account Key.
+            // Wir holen den base64-kodierten Schlüssel aus den Umgebungsvariablen.
+            const encodedKey = process.env.GCP_SA_B64;
+            if (!encodedKey) {
+              // Dies sollte nie passieren, wenn die Vercel-Variable gesetzt ist.
+              throw new Error('GCP_SA_B64 environment variable not found.');
+            }
+            // Wir dekodieren den Schlüssel zurück in einen JSON-String und parsen ihn.
+            const decodedKey = Buffer.from(encodedKey, 'base64').toString('utf-8');
+            const credentials = JSON.parse(decodedKey);
+
+            // Initialisiere den KORREKTEN Vertex AI Client mit den Credentials.
             const vertex_ai = new VertexAI({
               project: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
               location: 'us-central1', // Dies ist eine gängige Region
+              authOptions: {
+                credentials, // Hier wird das entschlüsselte Service-Account-Objekt übergeben.
+              },
             });
 
             // Wir nehmen den Modellnamen aus deiner `chosen` Variable
