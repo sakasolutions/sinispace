@@ -1,12 +1,15 @@
-// app/api/auth/session/route.ts
 export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
-import { adminAuth } from '@/lib/firebase-admin';
+// Wir importieren jetzt die FUNKTION, nicht das Objekt
+import { getAdminAuth } from '@/lib/firebase-admin';
 import { cookies } from 'next/headers';
 
 export async function POST(request: Request) {
   try {
+    // Der Elektriker holt sich das Werkzeug erst jetzt!
+    const adminAuth = getAdminAuth();
+    
     const { idToken } = await request.json();
     const expiresIn = 60 * 60 * 24 * 5 * 1000; // 5 Tage
     const sessionCookie = await adminAuth.createSessionCookie(idToken, { expiresIn });
@@ -19,11 +22,7 @@ export async function POST(request: Request) {
     });
     return NextResponse.json({ status: 'success' });
   } catch (error) {
+    console.error("Session creation failed:", error);
     return new NextResponse('Unauthorized', { status: 401 });
   }
-}
-
-export async function DELETE() {
-  cookies().delete('session');
-  return NextResponse.json({ status: 'success' });
 }
