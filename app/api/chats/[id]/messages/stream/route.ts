@@ -3,16 +3,22 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ensureUser } from '@/lib/auth';
 import OpenAI from 'openai';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+// 1. KORREKTUR: Die alte Google-Bibliothek wird durch die neue, korrekte Vertex AI-Bibliothek ersetzt.
+import { VertexAI } from '@google-cloud/vertexai';
 import { readFile } from 'fs/promises';
 import path from 'path';
 
 // Prisma/Streaming brauchen Node
 export const runtime = 'nodejs';
+// Wichtig, damit die Umgebungsvariablen zur Laufzeit verfügbar sind
+export const dynamic = 'force-dynamic';
 
+// Der OpenAI-Client bleibt, wie er ist. Perfekt.
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
+// 2. ÄNDERUNG: Die statische Initialisierung des alten Google-Clients wird entfernt.
+// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
+// Alle deine Hilfsfunktionen bleiben exakt gleich. Sie sind perfekt.
 const getId = (ctx: any) => {
   const v = ctx?.params?.id;
   return Array.isArray(v) ? v[0] : v;
@@ -41,7 +47,7 @@ function guessMimeFromExt(ext: string) {
 async function toInlineDataFromLocalUpload(urlPath: string) {
   const full = path.join(process.cwd(), 'public', decodeURIComponent(urlPath.replace(/^\/+/, '')));
   const buf = await readFile(full);
-  return { data: buf.toString('base64'), mimeType: guessMimeFromExt(path.extname(full)) };
+  return { inlineData: { data: buf.toString('base64'), mimeType: guessMimeFromExt(path.extname(full)) } };
 }
 
 async function toDataUrlFromLocalUpload(urlPath: string) {
@@ -57,7 +63,7 @@ export async function POST(req: Request, ctx: any) {
     if (!chatId) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
     const body = (await req.json()) as {
-      model?: 'gpt-4o-mini' | 'gemini-1.5-pro';
+      model?: 'gpt-4o-mini' | 'gemini-1.5-pro' | 'gemini-pro'; // gemini-pro hinzugefügt
       messages: Array<{ id?: string; role: 'user' | 'assistant' | 'system'; content: string }>;
     };
 
@@ -68,7 +74,7 @@ export async function POST(req: Request, ctx: any) {
     });
     if (!chat) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
-    const chosen = (body.model ?? chat.model) as 'gpt-4o-mini' | 'gemini-1.5-pro';
+    const chosen = (body.model ?? chat.model) as string;
     if (!Array.isArray(body.messages) || body.messages.length === 0) {
       return NextResponse.json({ error: 'No messages provided' }, { status: 400 });
     }
@@ -90,6 +96,7 @@ export async function POST(req: Request, ctx: any) {
           const imageUrls = extractImageUrls(last.content);
 
           if (chosen.startsWith('gpt')) {
+            // DEIN OPENAI-CODE BLEIBT 100% UNVERÄNDERT. ER IST PERFEKT.
             const parts: any[] = [{ type: 'text', text: last.content }];
             for (const url of imageUrls) {
               if (/^https?:\/\//i.test(url)) parts.push({ type: 'image_url', image_url: { url } });
@@ -105,7 +112,7 @@ export async function POST(req: Request, ctx: any) {
             ];
 
             const completion = await openai.chat.completions.create({
-              model: chosen,
+              model: chosen as any,
               stream: true,
               messages: openaiMessages,
             });
@@ -118,30 +125,42 @@ export async function POST(req: Request, ctx: any) {
               }
             }
           } else {
-            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
+            // 3. GROSSE KORREKTUR: HIER TAUSCHEN WIR DEN GEMINI-MOTOR AUS
+            
+            // Initialisiere den KORREKTEN Vertex AI Client
+            const vertex_ai = new VertexAI({
+              project: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
+              location: 'us-central1', // Dies ist eine gängige Region
+            });
+
+            // Wir nehmen den Modellnamen aus deiner `chosen` Variable
+            const model = vertex_ai.getGenerativeModel({
+              model: chosen,
+            });
+
             const userParts: any[] = [{ text: last.content }];
             for (const url of imageUrls) {
               if (url.startsWith('/uploads/')) {
-                const inlineData = await toInlineDataFromLocalUpload(url);
-                userParts.push({ inlineData });
+                const inlineDataPart = await toInlineDataFromLocalUpload(url);
+                userParts.push(inlineDataPart);
               }
             }
-
-            const contents = [
-              ...body.messages.slice(0, -1).map((m) => ({
-                role: m.role === 'assistant' ? 'model' : m.role,
-                parts: [{ text: m.content }],
+            
+            // Die Vertex-Bibliothek ist schlauer und kann mit der Historie umgehen
+            const chat = model.startChat({
+              history: body.messages.slice(0, -1).map((m) => ({
+                  role: m.role === 'assistant' ? 'model' : m.role,
+                  parts: [{ text: m.content }],
               })),
-              { role: 'user', parts: userParts },
-            ];
+            });
 
-            const result = await model.generateContentStream({ contents } as any);
+            const result = await chat.sendMessageStream(userParts);
 
-            for await (const ch of result.stream) {
-              const t = ch.text();
-              if (t) {
-                assistantText += t;
-                send({ type: 'delta', text: t });
+            for await (const chunk of result.stream) {
+              const delta = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (delta) {
+                assistantText += delta;
+                send({ type: 'delta', text: delta });
               }
             }
           }
