@@ -42,3 +42,24 @@ next-env.d.ts
 
 /lib/generated/prisma
 serviceAccountKey.json
+
+
+# Umgebungsvariablen-Dateien
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Google Service Account Schlüssel (niemals hochladen!)
+*.json
+
+# Node.js
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Vercel
+.vercel/
