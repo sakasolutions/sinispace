@@ -118,7 +118,7 @@ export async function POST(req: Request, ctx: any) {
               }
             }
           } else {
-            const model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+            const model = genAI.getGenerativeModel({ model: "gemini-pro" });
             const userParts: any[] = [{ text: last.content }];
             for (const url of imageUrls) {
               if (url.startsWith('/uploads/')) {
