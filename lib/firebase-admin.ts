@@ -1,7 +1,6 @@
 import admin from 'firebase-admin';
 
 const initializeFirebaseAdmin = () => {
-  // Diese Funktion wird jetzt NUR aufgerufen, wenn sie gebraucht wird.
   if (!admin.apps.length) {
     try {
       const serviceAccountString = Buffer.from(
@@ -21,8 +20,6 @@ const initializeFirebaseAdmin = () => {
   }
 };
 
-// DAS IST DER NEUE, SICHERE BAUPLAN
-// Jede Funktion stellt sicher, dass das Haus gebaut ist, BEVOR sie das Werkzeug holt.
 export const getAdminDb = () => {
   initializeFirebaseAdmin();
   return admin.firestore();
