@@ -3,22 +3,19 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ensureUser } from '@/lib/auth';
 import OpenAI from 'openai';
-// 1. KORREKTUR: Die alte Google-Bibliothek wird durch die neue, korrekte Vertex AI-Bibliothek ersetzt.
 import { VertexAI } from '@google-cloud/vertexai';
 import { readFile } from 'fs/promises';
 import path from 'path';
 
-// Prisma/Streaming brauchen Node
+// Node.js runtime ist korrekt
 export const runtime = 'nodejs';
 // Wichtig, damit die Umgebungsvariablen zur Laufzeit verfügbar sind
 export const dynamic = 'force-dynamic';
 
-// Der OpenAI-Client bleibt, wie er ist. Perfekt.
+// OpenAI-Client
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
-// 2. ÄNDERUNG: Die statische Initialisierung des alten Google-Clients wird entfernt.
-// const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
-// Alle deine Hilfsfunktionen bleiben exakt gleich. Sie sind perfekt.
+// Hilfsfunktionen (unverändert)
 const getId = (ctx: any) => {
   const v = ctx?.params?.id;
   return Array.isArray(v) ? v[0] : v;
@@ -63,7 +60,7 @@ export async function POST(req: Request, ctx: any) {
     if (!chatId) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
     const body = (await req.json()) as {
-      model?: 'gpt-4o-mini' | 'gemini-1.5-pro' | 'gemini-pro'; // gemini-pro hinzugefügt
+      model?: 'gpt-4o-mini' | 'gemini-1.5-pro' | 'gemini-pro';
       messages: Array<{ id?: string; role: 'user' | 'assistant' | 'system'; content: string }>;
     };
 
@@ -96,7 +93,7 @@ export async function POST(req: Request, ctx: any) {
           const imageUrls = extractImageUrls(last.content);
 
           if (chosen.startsWith('gpt')) {
-            // DEIN OPENAI-CODE BLEIBT 100% UNVERÄNDERT. ER IST PERFEKT.
+            // OpenAI-Logik (unverändert)
             const parts: any[] = [{ type: 'text', text: last.content }];
             for (const url of imageUrls) {
               if (/^https?:\/\//i.test(url)) parts.push({ type: 'image_url', image_url: { url } });
@@ -125,18 +122,30 @@ export async function POST(req: Request, ctx: any) {
               }
             }
           } else {
-            // 3. GROSSE KORREKTUR: HIER TAUSCHEN WIR DEN GEMINI-MOTOR AUS
+            // =================================================================
+            // START: FINALE GEMINI-KORREKTUR
+            // =================================================================
             
-            // Initialisiere den KORREKTEN Vertex AI Client
+            const encodedKey = process.env.GCP_SA_B64;
+            if (!encodedKey) {
+              throw new Error('GCP_SA_B64 environment variable not found. Please check Vercel project settings.');
+            }
+
+            let credentials;
+            try {
+              const decodedKey = Buffer.from(encodedKey, 'base64').toString('utf-8');
+              credentials = JSON.parse(decodedKey);
+            } catch (error) {
+              throw new Error('Failed to parse GCP service account key. Ensure it is a valid base64 encoded JSON.');
+            }
+
             const vertex_ai = new VertexAI({
               project: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
-              location: 'us-central1', // Dies ist eine gängige Region
+              location: 'us-central1',
+              authOptions: { credentials },
             });
 
-            // Wir nehmen den Modellnamen aus deiner `chosen` Variable
-            const model = vertex_ai.getGenerativeModel({
-              model: chosen,
-            });
+            const model = vertex_ai.getGenerativeModel({ model: chosen });
 
             const userParts: any[] = [{ text: last.content }];
             for (const url of imageUrls) {
@@ -146,15 +155,14 @@ export async function POST(req: Request, ctx: any) {
               }
             }
             
-            // Die Vertex-Bibliothek ist schlauer und kann mit der Historie umgehen
-            const chat = model.startChat({
+            const chatHistory = model.startChat({
               history: body.messages.slice(0, -1).map((m) => ({
                   role: m.role === 'assistant' ? 'model' : m.role,
                   parts: [{ text: m.content }],
               })),
             });
 
-            const result = await chat.sendMessageStream(userParts);
+            const result = await chatHistory.sendMessageStream(userParts);
 
             for await (const chunk of result.stream) {
               const delta = chunk.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -163,6 +171,9 @@ export async function POST(req: Request, ctx: any) {
                 send({ type: 'delta', text: delta });
               }
             }
+            // =================================================================
+            // ENDE: FINALE GEMINI-KORREKTUR
+            // =================================================================
           }
 
           await prisma.message.create({
@@ -174,7 +185,8 @@ export async function POST(req: Request, ctx: any) {
           controller.close();
         } catch (err) {
           console.error('stream error:', err);
-          send({ type: 'error', message: 'stream failed' });
+          const errorMessage = err instanceof Error ? err.message : 'An unknown stream error occurred';
+          send({ type: 'error', message: errorMessage });
           controller.error(err);
         }
       },
