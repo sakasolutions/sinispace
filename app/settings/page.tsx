@@ -1,109 +1,111 @@
-// app/settings/page.tsx
+// app/settings/page.tsx (Finale Version)
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/context/AuthContext';
+import { useAuth } from '@/context/AuthContext'; // <-- BENUTZT WIEDER DEN CONTEXT
+import { sendPasswordResetEmail } from 'firebase/auth'; 
 
-type SubscriptionInfo =
-  | { hasSubscription: false; reason?: string; emailUsed?: string }
-  | {
-      hasSubscription: true;
-      status: string;
-      currentPeriodEnd: string | Date;
-      cancelAtPeriodEnd: boolean;
-      emailUsed?: string;
-    }
-  | { error: string };
+/**
+ * Typ für Firestore-Daten
+ */
+type UserSubData = {
+  subscriptionEnd?: string;
+  email: string;
+} | { error: string };
 
-const PAYMENT_LINK_BASE = 'https://buy.stripe.com/6oU6oI6vW2jLfrudeJawo04';
 
 export default function SettingsPage() {
-  const { user, signOut } = useAuth();
-  const router = useRouter();
+  
+  // --- Benutzt jetzt wieder den Context ---
+  const { user, signOut, loading: authLoading, auth, fetchWithAuth } = useAuth();
   const authedEmail = (user?.email ?? '').trim();
 
-  const [info, setInfo] = useState<SubscriptionInfo | null>(null);
+  // --- States (unverändert) ---
+  const [data, setData] = useState<UserSubData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  
   const [logoutBusy, setLogoutBusy] = useState(false);
+  const [passwordBusy, setPasswordBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  
+  const [feedbackMsg, setFeedbackMsg] = useState('');
 
-  const paymentLink = useMemo(() => {
-    if (!PAYMENT_LINK_BASE) return '';
-    const url = new URL(PAYMENT_LINK_BASE);
-    if (authedEmail) url.searchParams.set('prefilled_email', authedEmail);
-    return url.toString();
-  }, [authedEmail]);
-
-  useEffect(() => {
-    if (!authedEmail) return;
-    void checkRuntime();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [authedEmail]);
-
-  async function checkRuntime() {
-    if (!authedEmail) return;
+  
+  async function handleCheckRuntime() {
+    if (!authedEmail) {
+      setErr('E-Mail noch nicht geladen.');
+      return;
+    }
+    
     setLoading(true);
     setErr(null);
+    setData(null);
     try {
-      const r = await fetch(`/api/subscription?email=${encodeURIComponent(authedEmail)}`, { cache: 'no-store' });
+      // Benutzt die fetchWithAuth-Funktion aus dem Context
+      const r = await fetchWithAuth(`/api/user-data`, { cache: 'no-store' }); 
+
       const d = await r.json();
-      setInfo(d);
-    } catch {
-      setErr('Abo-Status konnte nicht geladen werden.');
+      if (!r.ok) throw new Error(d.error || 'Abo-Daten konnten nicht geladen werden');
+      setData(d);
+    } catch (e: any) {
+      setErr(e.message ?? 'Abo-Daten konnten nicht geladen werden.');
     } finally {
       setLoading(false);
     }
   }
 
-  const daysLeft = useMemo(() => {
-    if (!info || !('hasSubscription' in info) || !info.hasSubscription) return null;
-    const end = new Date(info.currentPeriodEnd);
-    const ms = end.getTime() - Date.now();
-    return Math.max(0, Math.ceil(ms / (1000 * 60 * 60 * 24)));
-  }, [info]);
-
-  async function openPortal() {
-    setBusy(true);
-    try {
-      const r = await fetch('/api/stripe/customer-portal', { method: 'POST' });
-      const d = await r.json();
-      if (d.url) window.location.href = d.url;
-      else alert(d.error || 'Kundenportal konnte nicht geöffnet werden.');
-    } catch {
-      alert('Kundenportal konnte nicht geöffnet werden.');
-    } finally {
-      setBusy(false);
-    }
-  }
 
   async function handleLogout() {
+    setLogoutBusy(true);
     try {
-      await fetch('/api/auth/logout', {
-        method: 'POST',
-        cache: 'no-store',
-        credentials: 'include', // <- Safari braucht das oft
-      });
-      await signOut?.(); // dein AuthContext / Firebase etc.
+      await signOut?.(); // Benutzt signOut aus dem Context
     } catch (e) {
       console.error('Logout-Fehler', e);
+      setLogoutBusy(false);
+    }
+  }
+
+  async function handlePasswordReset() {
+    if (!auth || !authedEmail) { // Benutzt auth aus dem Context
+      setFeedbackMsg('Fehler: E-Mail des Nutzers noch nicht geladen.');
+      return;
+    }
+    setPasswordBusy(true);
+    setFeedbackMsg('');
+    try {
+      await sendPasswordResetEmail(auth, authedEmail);
+      setFeedbackMsg('E-Mail zum Zurücksetzen gesendet an: ' + authedEmail);
+    } catch (error: any) {
+      console.error('Passwort-Reset-Fehler', error);
+      setFeedbackMsg('Fehler: ' + error.message);
     } finally {
-      try {
-        localStorage.clear();
-        sessionStorage.clear();
-        // @ts-ignore – optional für Firebase
-        indexedDB?.deleteDatabase?.('firebaseLocalStorageDb');
-      } catch {}
-      // Voller Reload verhindert stale Seiten/Redirects
-      window.location.replace('/login?logged_out=1');
+      setPasswordBusy(false);
     }
   }
   
-  
+  async function handleDeleteAccount() {
+    if (confirm('Bist du sicher, dass du deinen Account unwiderruflich löschen willst?\n\nAlle deine Chats und Abo-Daten gehen verloren.')) {
+      setDeleteBusy(true);
+      setFeedbackMsg('Account-Löschung wird implementiert...');
+      // TODO: Später /api/delete-account mit fetchWithAuth aufrufen
+      setTimeout(() => {
+         setDeleteBusy(false);
+         setFeedbackMsg('Fehler: Lösch-Funktion noch nicht verbunden.');
+      }, 2000);
+    }
+  }
+
+  const mailtoLink = useMemo(() => {
+    if (!authedEmail) return '#';
+    const subject = `Kündigung SiniSpace Abo: ${authedEmail}`;
+    const body = `Hallo SiniSpace-Team,\n\hiermit möchte ich mein Abo zum nächstmöglichen Zeitpunkt kündigen.\n\nMeine Account-E-Mail lautet: ${authedEmail}\n\nBitte bestätigt mir die Kündigung.\n\nDanke.`;
+    return `mailto:hello@sinispace.app?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  }, [authedEmail]);
   
 
+  // Seite rendert sofort
   return (
     <main className="relative isolate min-h-[100dvh] text-white bg-[radial-gradient(80%_60%_at_50%_-10%,rgba(99,102,241,0.15),transparent),linear-gradient(180deg,#0b1120_0%,#0b1120_50%,#0e1322_100%)]">
       <header className="sticky top-0 z-10 h-12 sm:h-14 flex items-center border-b border-white/10 backdrop-blur supports-[backdrop-filter]:bg-white/5">
@@ -114,98 +116,99 @@ export default function SettingsPage() {
       </header>
 
       <div className="mx-auto max-w-3xl px-3 sm:px-6 py-6 space-y-6">
+        
+        {/* SEKTION 1: ACCOUNT & ABO */}
         <section className="rounded-xl border border-white/15 bg-white/5 p-4">
-          <h2 className="text-base font-medium mb-3">Abo-Status</h2>
-
-          <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
-            <div className="flex-1">
-              <label className="block text-xs text-white/60 mb-1">Rechnungs-E-Mail</label>
-              <input
-                value={authedEmail || ''}
-                readOnly
-                disabled
-                className="w-full rounded-md border border-white/15 bg-white/10 px-3 py-2 text-sm text-white/80 cursor-not-allowed"
-              />
-            </div>
-            <button
-              onClick={checkRuntime}
-              disabled={!authedEmail || loading}
-              className="rounded-md border border-white/15 bg-white/5 px-3 py-2 text-sm hover:bg-white/10 disabled:opacity-50"
-            >
-              {loading ? 'Prüfe…' : 'Laufzeit prüfen'}
-            </button>
-          </div>
-
-          <div className="mt-4">
-            {err && <p className="text-red-400 text-sm">{err}</p>}
-
-            {!err && info && 'error' in info && (
-              <p className="text-red-400 text-sm">{info.error}</p>
-            )}
-
-            {!err && info && !('error' in info) && (
-              info.hasSubscription ? (
-                <div className="text-sm text-white/80">
-                  Status: <span className="font-medium">{info.status}</span><br />
-                  Laufzeit bis{' '}
-                  {info.currentPeriodEnd
-                    ? new Date(info.currentPeriodEnd).toLocaleDateString()
-                    : '—'}
-                  {typeof daysLeft === 'number' && (
-                    <> &nbsp;•&nbsp; <span className="text-white/70">{daysLeft} Tag{daysLeft === 1 ? '' : 'e'} übrig</span></>
-                  )}
-                  {info.cancelAtPeriodEnd && (
-                    <p className="text-xs text-yellow-400 mt-1">
-                      Das Abo endet automatisch am Laufzeitende.
-                    </p>
-                  )}
-                  <div className="mt-3">
-                    <button
-                      onClick={openPortal}
-                      disabled={busy}
-                      className="border border-white/15 bg-white/5 px-3 py-2 rounded hover:bg-white/10 text-sm disabled:opacity-50"
-                    >
-                      Abo verwalten (Kundenportal)
-                    </button>
-                  </div>
-                </div>
+          <h2 className="text-base font-medium mb-3">Mein Account & Abo</h2>
+          
+          <div className="space-y-2">
+            <p className="text-sm text-white/70">
+              E-Mail (Login): 
+              {authLoading ? (
+                <span className="ml-2 text-white/50">Lade...</span>
               ) : (
-                <div className="text-sm text-white/80">
-                  Kein aktives Abo gefunden.
-                  <div className="mt-3 flex flex-col sm:flex-row gap-2 sm:items-center">
-                    <button
-                      onClick={() => window.open(paymentLink, '_blank')}
-                      className="border border-white/15 bg-white text-black px-4 py-2 rounded hover:opacity-90 text-sm"
-                    >
-                      Abo abschließen (1 Jahr)
-                    </button>
-                    {authedEmail && (
-                      <div className="text-xs text-white/60">
-                        Tipp: Der Payment Link wird mit <span className="text-white/80 font-medium">{authedEmail}</span> vorbefüllt.
-                      </div>
-                    )}
-                  </div>
-                </div>
+                <span className="font-medium text-white/90"> {authedEmail || 'Nicht angemeldet'}</span>
+              )}
+            </p>
+            
+            <div className="pt-2">
+              <button
+                onClick={handleCheckRuntime}
+                disabled={authLoading || loading || !authedEmail}
+                className="inline-block border border-white/15 bg-white/5 px-4 py-2 rounded text-sm text-center hover:bg-white/10 disabled:opacity-50"
+              >
+                {loading ? 'Prüfe Abo...' : 'Abo-Status prüfen'}
+              </button>
+            </div>
+
+            {err && <p className="text-sm text-red-400 mt-3">{err}</p>}
+            
+            {data && !('error' in data) && (
+              data.subscriptionEnd && new Date(data.subscriptionEnd) > new Date() ? (
+                <p className="text-sm text-white/70 mt-3">
+                  Abo-Status: <span className="font-medium text-green-400">Aktiv</span>
+                  <span className="text-white/60"> (Gültig bis: {new Date(data.subscriptionEnd).toLocaleDateString()})</span>
+                </p>
+              ) : (
+                <p className="text-sm text-white/70 mt-3">
+                  Abo-Status: <span className="font-medium text-yellow-400">Kein aktives Abo</span>
+                </p>
               )
             )}
           </div>
+
+          <div className="mt-5 pt-4 border-t border-white/10 flex flex-col sm:flex-row gap-3">
+             <a
+              href={mailtoLink}
+              aria-disabled={!authedEmail}
+              onClick={(e) => !authedEmail && e.preventDefault()}
+              className={(!authedEmail ? 'opacity-50 cursor-not-allowed' : '') + " inline-block border border-white/15 bg-white/5 px-4 py-2 rounded text-sm text-center hover:bg-white/10"}
+            >
+              Abo kündigen
+            </a>
+          </div>
         </section>
 
-        <section className="rounded-xl border border-white/15 bg-white/5 p-4 space-y-3">
-          <h2 className="text-base font-medium">Account</h2>
-          <p className="text-sm text-white/70">
-            E-Mail (Login): <span className="font-medium">{authedEmail || '—'}</span>
-          </p>
-
+        {/* SEKTION 2: SICHERHEIT */}
+        <section className="rounded-xl border border-white/15 bg-white/5 p-4">
+          <h2 className="text-base font-medium mb-3">Sicherheit</h2>
+          <p className="text-sm text-white/70 mb-4">
+            Du erhältst eine E-Mail mit einem Link, um dein Passwort zurückzusetzen.
+          </p> 
           <button
-            type="button"
-            onClick={handleLogout}
-            disabled={logoutBusy}
-            className="mt-2 w-full sm:w-auto border border-white/15 bg-red-600/80 hover:bg-red-600 px-4 py-2 rounded text-sm font-medium disabled:opacity-60"
+            onClick={handlePasswordReset}
+            disabled={passwordBusy || authLoading || !authedEmail}
+            className="inline-block border border-white/15 bg-white/5 px-4 py-2 rounded text-sm text-center hover:bg-white/10 disabled:opacity-50"
           >
-            {logoutBusy ? 'Logout…' : 'Logout'}
+            {passwordBusy ? 'Sende...' : 'Passwort zurücksetzen'}
           </button>
+          
+          {feedbackMsg && (
+            <p className="text-sm text-white/80 mt-3">{feedbackMsg}</p>
+          )}
         </section>
+
+        {/* SEKTION 3: GEFAHRZONE & RECHTLICHES */}
+        <section className="rounded-xl border border-red-500/30 bg-red-500/5 p-4">
+          <h2 className="text-base font-medium text-red-300 mb-3">Gefahrzone</h2>
+          <p className="text-sm text-white/70 mb-4">
+            Das Löschen deines Accounts ist endgültig und kann nicht rückgängig gemacht werden.
+            Alle deine Chats und Abo-Daten werden gelöscht.
+          </p>
+          <button
+            onClick={handleDeleteAccount}
+            disabled={deleteBusy || authLoading || !authedEmail}
+            className="inline-block border border-red-400/30 bg-red-500/20 px-4 py-2 rounded text-sm text-red-300 text-center hover:bg-red-500/30 disabled:opacity-50"
+          >
+            {deleteBusy ? 'Lösche...' : 'Account endgültig löschen'}
+          </button>
+
+          <div className="mt-5 pt-4 border-t border-white/10 text-xs text-white/60 flex gap-4">
+            <Link href="/impressum" target="_blank" className="underline hover:text-white">Impressum</Link>
+            <Link href="/datenschutz" target="_blank" className="underline hover:text-white">Datenschutz</Link>
+          </div>
+        </section>
+
       </div>
     </main>
   );

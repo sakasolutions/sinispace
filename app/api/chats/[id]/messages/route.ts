@@ -1,24 +1,25 @@
 // app/api/chats/[id]/messages/route.ts
 import { NextResponse, type NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { ensureUser } from '@/lib/auth';
+import { getPrismaUserFromSession } from '@/lib/auth'; // GEÄNDERT: Neue Import-Funktion
 
-// Prisma braucht Node
+// WICHTIG: Cache-Killer für alle GET-Anfragen auf dieser Route
+export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Wir definieren den Typ jetzt direkt in der Funktion unten
 export async function GET(
   _req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = params; // Direkter Zugriff auf die ID
+    const { id } = params;
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-    const user = await ensureUser();
+    // GEÄNDERT: Direkter, zuverlässiger User-Check
+    const user = await getPrismaUserFromSession();
 
     const chat = await prisma.chat.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: user.id }, // Dieser Filter ist jetzt zuverlässig
       select: { id: true },
     });
     if (!chat) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -29,25 +30,28 @@ export async function GET(
     });
 
     return NextResponse.json(messages);
-  } catch (e) {
+  } catch (e: any) {
     console.error('GET /api/chats/[id]/messages error:', e);
+    if (e.message.includes('Nicht autorisiert')) {
+      return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 });
+    }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }
 
-// Wir definieren den Typ auch hier direkt in der Funktion
 export async function POST(
   req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
-    const { id } = params; // Auch hier direkter Zugriff
+    const { id } = params;
     if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
 
-    const user = await ensureUser();
+    // GEÄNDERT: Direkter, zuverlässiger User-Check
+    const user = await getPrismaUserFromSession();
 
     const chat = await prisma.chat.findFirst({
-      where: { id, userId: user.id },
+      where: { id, userId: user.id }, // Dieser Filter ist jetzt zuverlässig
       select: { id: true },
     });
     if (!chat) return NextResponse.json({ error: 'Not found' }, { status: 404 });
@@ -67,8 +71,11 @@ export async function POST(
     });
 
     return NextResponse.json(msg, { status: 201 });
-  } catch (e) {
+  } catch (e: any) {
     console.error('POST /api/chats/[id]/messages error:', e);
+    if (e.message.includes('Nicht autorisiert')) {
+      return NextResponse.json({ error: 'Nicht autorisiert' }, { status: 401 });
+    }
     return NextResponse.json({ error: 'Internal Server Error' }, { status: 500 });
   }
 }

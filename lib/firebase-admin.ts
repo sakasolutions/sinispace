@@ -1,39 +1,41 @@
+// lib/firebase-admin.ts
 import admin from 'firebase-admin';
 
-// Diese Funktion initialisiert Firebase nur EINMAL und stellt sicher,
-// dass wir nicht versuchen, es erneut zu initialisieren.
-const initializeFirebaseAdmin = () => {
-  if (admin.apps.length > 0) {
-    return;
+let initialized = false;
+
+function initializeFirebaseAdmin() {
+  if (initialized || admin.apps.length > 0) return;
+
+  const b64 = process.env.GCP_SA_B64;
+  if (!b64) {
+    throw new Error('GCP_SA_B64 is not set (base64-encoded service account JSON).');
   }
 
-  const serviceAccountKey = process.env.GCP_SA_B64;
-  if (!serviceAccountKey) {
-    // Wenn wir diesen Fehler sehen, WISSEN wir, dass Vercel die Variable nicht lädt.
-    throw new Error('GCP_SA_B64 environment variable is not set.');
-  }
+  // Base64 -> JSON
+  const json = Buffer.from(b64, 'base64').toString('utf-8');
 
+  let credentialObj: admin.ServiceAccount;
   try {
-    const serviceAccountString = Buffer.from(serviceAccountKey, 'base64').toString('utf-8');
-    const serviceAccount = JSON.parse(serviceAccountString);
-
-    admin.initializeApp({
-      credential: admin.credential.cert(serviceAccount),
-    });
-  } catch (error: any) {
-    // Wir geben eine detailliertere Fehlermeldung aus
-    console.error('FATAL: Firebase admin initialization failed:', error.message);
-    throw new Error(`Firebase admin initialization failed: ${error.message}`);
+    credentialObj = JSON.parse(json);
+  } catch (e) {
+    // Häufige Ursache: falsches/abgeschnittenes Env
+    throw new Error('GCP_SA_B64 is not valid JSON. Check your env variable.');
   }
-};
 
-// Jede Funktion stellt sicher, dass die App initialisiert ist, bevor sie aufgerufen wird.
-export const getAdminDb = () => {
-  initializeFirebaseAdmin();
-  return admin.firestore();
-};
+  // Wichtig: kein Edge Runtime – dafür sorgst du in den Routen mit export const runtime = 'nodejs'
+  admin.initializeApp({
+    credential: admin.credential.cert(credentialObj),
+  });
 
-export const getAdminAuth = () => {
+  initialized = true;
+}
+
+export function getAdminAuth() {
   initializeFirebaseAdmin();
   return admin.auth();
-};
+}
+
+export function getAdminDb() {
+  initializeFirebaseAdmin();
+  return admin.firestore();
+}

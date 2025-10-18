@@ -1,24 +1,35 @@
 // lib/auth.ts
 import { prisma } from './prisma';
+import { getServerSession } from 'next-auth/next';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { User } from '@prisma/client';
 
 /**
- * Hier später echte Auth (NextAuth/Clerk/etc.)
- * Für jetzt: Demo-User basierend auf .env oder Fallback.
+ * Holt die aktuelle NextAuth-Session.
+ * DIES IST DIE QUELLE ALLEN ÜBELS. Wir rufen sie jetzt direkt in der API-Route auf.
  */
-const DEMO_EMAIL = process.env.DEMO_USER_EMAIL ?? 'demo@example.com';
-
-export async function getCurrentUser() {
-  // In Produktion: aus Session lesen
-  return { email: DEMO_EMAIL };
+export async function getSession() {
+  return await getServerSession(authOptions);
 }
 
-/** Erstellt den User falls nicht vorhanden und gibt ihn zurück. */
-export async function ensureUser() {
-  const { email } = await getCurrentUser();
-  const user = await prisma.user.upsert({
-    where: { email },
-    update: {},
-    create: { email },
+/**
+ * Holt den eingeloggten Prisma-User-Datensatz basierend auf der Session.
+ * Wirft einen Fehler, wenn niemand eingeloggt ist.
+ */
+export async function getPrismaUserFromSession(): Promise<User> {
+  const session = await getSession();
+
+  if (!session?.user?.id) {
+    throw new Error('Nicht autorisiert: Keine Session gefunden');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
   });
+
+  if (!user) {
+    throw new Error('Nicht autorisiert: User nicht in DB gefunden');
+  }
+
   return user;
 }

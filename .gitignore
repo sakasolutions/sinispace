@@ -63,3 +63,7 @@ out/
 
 # Vercel
 .vercel/
+
+
+# Firebase Datum
+.service-account-key.json
