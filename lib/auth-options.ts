@@ -17,8 +17,8 @@ export const authOptions: AuthOptions = {
       async authorize(credentials: any) {
         
         // ===================================================================
-        // KORRIGIERTE FIREBASE-INITIALISIERUNG (Server-sicher)
-        // Läuft nur, wenn 'authorize' auf dem Server aufgerufen wird.
+        // FIREBASE-INITIALISIERUNG (Server-sicher)
+        // ===================================================================
         if (!getApps().length) {
           const serviceAccountPath = path.resolve(process.cwd(), 'firebase-service-account.json');
           const fileContents = fs.readFileSync(serviceAccountPath, 'utf8');
@@ -27,7 +27,6 @@ export const authOptions: AuthOptions = {
             credential: cert(serviceAccount),
           });
         }
-        // ===================================================================
         
         const idToken = credentials.idToken;
         if (!idToken) return null;
@@ -38,14 +37,32 @@ export const authOptions: AuthOptions = {
 
           if (!decodedToken || !decodedToken.email) return null;
 
+          // ===================================================================
+          // HIER IST DIE KORREKTUR: Dynamische Erstellung der Daten
+          // ===================================================================
+          
+          // 1. Definiere die Daten, die in JEDEM Fall erstellt werden
+          const createData: { email: string; name?: string; image?: string } = {
+            email: decodedToken.email,
+          };
+
+          // 2. Definiere die Daten, die in JEDEM Fall aktualisiert werden
+          const updateData: { name?: string; image?: string } = {};
+
+          // 3. Füge 'name' und 'image' nur hinzu, wenn sie existieren
+          if (decodedToken.name) {
+            createData.name = decodedToken.name;
+            updateData.name = decodedToken.name;
+          }
+          if (decodedToken.picture) {
+            createData.image = decodedToken.picture;
+            updateData.image = decodedToken.picture;
+          }
+
           const user = await prisma.user.upsert({
             where: { email: decodedToken.email },
-            update: { name: decodedToken.name, image: decodedToken.picture },
-            create: {
-              email: decodedToken.email,
-              name: decodedToken.name,
-              image: decodedToken.picture,
-            },
+            update: updateData, // <-- Nutzt das sichere updateData-Objekt
+            create: createData, // <-- Nutzt das sichere createData-Objekt
           });
           
           return user;
