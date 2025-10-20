@@ -1,13 +1,62 @@
 /* app/globals.css */
+
+/* Tailwind v4 laden */
 @import "tailwindcss";
 
-html {
-  scroll-behavior: smooth;
+/* >>> WICHTIG: Plugins in v4 per CSS registrieren */
+@plugin "@tailwindcss/typography";
+
+/* (Optional) leichte Prose-Feinheiten für dein Dark-UI */
+@layer base {
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background: transparent;
+  }
 }
 
-body {
-  /* ein paar sinnvolle Defaults */
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+/* Typography-Tuning (greift auf alle .prose Container) */
+@layer components {
+  /* Dark-Mode Farben/Kontraste */
+  .prose.prose-invert {
+    --tw-prose-body: rgb(255 255 255 / 0.85);
+    --tw-prose-headings: rgb(255 255 255 / 1);
+    --tw-prose-links: rgb(165 180 252);        /* indigo-300 */
+    --tw-prose-bold: rgb(255 255 255 / 1);
+    --tw-prose-hr: rgb(255 255 255 / 0.1);
+    --tw-prose-quotes: rgb(255 255 255 / 0.9);
+    --tw-prose-code: rgb(255 255 255 / 0.95);
+    --tw-prose-th-borders: rgb(255 255 255 / 0.15);
+    --tw-prose-td-borders: rgb(255 255 255 / 0.1);
+  }
+
+  /* Kompakteres Spacing und Headings für Chat-Bubbles */
+  .prose :where(p):not(:where([class~="not-prose"] *)) {
+    margin-top: 0.6em; margin-bottom: 0.6em; line-height: 1.7;
+  }
+  .prose :where(h1):not(:where([class~="not-prose"] *)) {
+    font-size: 1.35rem; margin: 0.6em 0 0.4em; font-weight: 700;
+  }
+  .prose :where(h2):not(:where([class~="not-prose"] *)) {
+    font-size: 1.15rem; margin: 1em 0 0.4em; font-weight: 700;
+  }
+  .prose :where(h3):not(:where([class~="not-prose"] *)) {
+    font-size: 1rem; margin: 0.8em 0 0.3em; font-weight: 600;
+  }
+  .prose :where(ul,ol):not(:where([class~="not-prose"] *)) { margin: 0.4em 0 0.8em; }
+  .prose :where(li):not(:where([class~="not-prose"] *)) { margin: 0.2em 0; }
+
+  /* Inlines & Pre: passen zu deinem Dark-Theme */
+  .prose :where(code):not(:where([class~="not-prose"] *)) {
+    font-weight: 600; padding: 0.15rem 0.35rem; border-radius: 0.4rem;
+    background: rgb(0 0 0 / 0.3); border: 1px solid rgb(255 255 255 / 0.15);
+  }
+  .prose :where(pre):not(:where([class~="not-prose"] *)) {
+    background: transparent; padding: 0; /* Padding macht dein Highlighter */
+  }
+
+  /* Bilder in Antworten hübsch abrunden */
+  .prose :where(img):not(:where([class~="not-prose"] *)) { border-radius: 0.5rem; }
 }
