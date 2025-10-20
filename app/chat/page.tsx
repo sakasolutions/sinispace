@@ -22,6 +22,7 @@ type Chat = {
   createdAt: string;
 };
 
+// ... (Restliche Typen und Hilfsfunktionen bleiben unverändert) ...
 type Message = {
   id: string;
   chatId: string;
@@ -30,16 +31,12 @@ type Message = {
   model?: Model;
   createdAt: string;
 };
-
 type Usage = { inputTokens?: number; outputTokens?: number; costUsd?: number };
-
-// ===== Helpers =====
 const nowIso = () => new Date().toISOString();
 const cls = (...xs: Array<string | false | null | undefined>) => xs.filter(Boolean).join(' ');
 const byId = <T extends { id: string }>(arr: T[], id: string) => arr.find(x => x.id === id);
 const uid = () => `temp_${Math.random().toString(36).slice(2)}_${Date.now()}`;
 const firstLine = (s: string) => s.split('\n').map(v => v.trim()).filter(Boolean)[0] ?? 'Neuer Chat';
-
 function splitTitle(title: string): { project: string | null; name: string } {
   const parts = (title || '').split('/').map(s => s.trim());
   if (parts.length >= 2) {
@@ -51,8 +48,7 @@ function joinTitle(project: string | null, name: string) {
   const cleanName = name.trim() || 'Neuer Chat';
   return project ? `${project.trim()} / ${cleanName}` : cleanName;
 }
-
-// ===== API Funktionen =====
+// ===== API Funktionen (bleiben unverändert) =====
 async function apiCreateChat(model: Model): Promise<Chat> {
   const r = await fetch('/api/chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model }) });
   if (!r.ok) throw new Error(`Chat anlegen fehlgeschlagen (${r.status})`);
@@ -138,6 +134,7 @@ export default function ChatPage() {
   }, [chats]);
   const [projectFilter, setProjectFilter] = useState<string | 'ALL'>('ALL');
 
+  // ... (Hooks unverändert) ...
   useEffect(() => {
     (async () => {
       try {
@@ -161,7 +158,7 @@ export default function ChatPage() {
   const handleNewChat = useCallback(async (model?: Model) => {
     setError(null);
     try {
-      const created = await apiCreateChat(model ?? 'gpt-4o'); // Standard bleibt gpt-4o
+      const created = await apiCreateChat(model ?? 'gpt-4o');
       setChats((prev) => [created, ...prev]);
       setMessagesByChat((prev) => ({ ...prev, [created.id]: [] }));
       setDrafts((prev) => ({ ...prev, [created.id]: '' }));
@@ -323,7 +320,7 @@ export default function ChatPage() {
   // ===== Render =====
   return (
     <div className="relative isolate h-[100dvh] overflow-hidden bg-[radial-gradient(80%_60%_at_50%_-10%,rgba(99,102,241,0.15),transparent),linear-gradient(180deg,#0b1120_0%,#0b1120_50%,#0e1322_100%)] text-white">
-      {/* Header */}
+      {/* Header (unverändert) */}
       <header className="h-12 sm:h-14 sticky top-0 z-20 backdrop-blur supports-[backdrop-filter]:bg-white/5 bg-white/0 border-b border-white/10">
         <div className="mx-auto max-w-7xl h-full px-3 sm:px-6 flex items-center gap-2">
           <button
@@ -400,8 +397,9 @@ export default function ChatPage() {
         </div>
       </header>
 
-      {/* Body: fixierte Spaltenhöhe, nur mittlere Spalte scrollt */}
+      {/* Body */}
       <div className="mx-auto max-w-7xl h-[calc(100dvh-3rem)] sm:h-[calc(100dvh-3.5rem)] grid grid-cols-1 lg:grid-cols-[300px_1fr]">
+        {/* Sidebar (unverändert) */}
         <aside className="hidden lg:flex h-full border-r border-white/10 flex-col overflow-hidden">
           <div className="p-3 flex items-center gap-2 border-b border-white/10">
             <button
@@ -441,6 +439,7 @@ export default function ChatPage() {
           )}
         </aside>
 
+        {/* Mobile Sidebar (unverändert) */}
         {sidebarOpen && (
           <div className="lg:hidden fixed inset-0 z-30">
             <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} aria-hidden />
@@ -481,6 +480,7 @@ export default function ChatPage() {
           </div>
         )}
 
+        {/* Chat Area (unverändert bis auf MessageBubble) */}
         <section className="h-full flex flex-col overflow-hidden">
           <div className="px-3 sm:px-6 pt-3 shrink-0">
             <div className="text-[11px] sm:text-xs text-white/80 bg-yellow-500/10 border border-yellow-400/30 rounded-lg p-2">
@@ -507,6 +507,7 @@ export default function ChatPage() {
             </div>
           </div>
 
+          {/* Composer (unverändert) */}
           <div className="sticky bottom-0 z-10 px-3 sm:px-6 pb-3 shrink-0" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
             <div className="mx-auto w-full md:max-w-3xl rounded-2xl border border-white/15 bg-white/5 backdrop-blur p-2 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]">
               <div className="flex items-end gap-2">
@@ -564,7 +565,7 @@ export default function ChatPage() {
   );
 }
 
-// ===== Sub-Komponenten =====
+// ===== Sub-Komponenten (SidebarChatList unverändert) =====
 function SidebarChatList({
   chats, activeChatId, onSelect, onDelete, onRename, onMoveProject, projectFilter,
 }: {
@@ -676,7 +677,7 @@ function SidebarChatList({
   );
 }
 
-// ===== Sub-Komponente: MessageBubble =====
+// ===== Sub-Komponente: MessageBubble (GEÄNDERT für Layout) =====
 function MessageBubble({
   message, onCopy, onEdit, isStreaming, grouped,
 }: {
@@ -684,6 +685,7 @@ function MessageBubble({
 }) {
   const isUser = message.role === 'user';
 
+  // Komponenten für Markdown (Syntax Highlighting etc.)
   const components = {
     // PRE: Eigene Hülle ohne zusätzliches Padding (Prose-Pre ist neutralisiert)
     pre: (props: React.HTMLAttributes<HTMLPreElement>) => (
@@ -736,7 +738,15 @@ function MessageBubble({
 
   return (
     <div className={cls('w-full', isUser ? 'flex justify-end' : 'flex justify-start')}>
-      <div className={cls('max-w-[92%] sm:max-w-[80%] md:max-w-[70%] group')}>
+      {/* --- HIER IST DIE ÄNDERUNG --- */}
+      {/* Wendet max-w nur auf User an */}
+      <div className={cls(
+          'group',
+          isUser ? 'max-w-[92%] sm:max-w-[80%] md:max-w-[70%]' : 'w-full' // <-- Assistant nimmt volle Breite
+        )}>
+        {/* --- ENDE DER ÄNDERUNG --- */}
+
+        {/* Header (Label & Buttons) bleibt für beide gleich */}
         {!grouped && (
           <div className={cls('mb-1 px-1 flex items-center gap-2', isUser ? 'justify-end' : 'justify-start')}>
             <div className="text-[11px] font-medium text-white/70">{isUser ? 'Du' : 'Assistant'}</div>
@@ -746,26 +756,38 @@ function MessageBubble({
             </div>
           </div>
         )}
-        <div className={cls('rounded-2xl px-4 py-3 border', isUser ? 'bg-blue-500/15 border-blue-400/30' : 'bg-white/5 border-white/15')}>
-          {/* Prose: Typography übernimmt Headings, Listen, Spacing; Dark-Mode via prose-invert */}
+
+        {/* Bedingte Bubble: Nur für User oder wenn keine Prose-Klasse vorhanden wäre (Fallback) */}
+        {isUser ? (
+          // USER: Bekommt die volle Bubble-Styling
+          <div className={cls('rounded-2xl px-4 py-3 border break-words', 'bg-blue-500/15 border-blue-400/30')}>
+            <div className="prose prose-sm sm:prose-base prose-invert max-w-none">
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+                {message.content || (isStreaming ? '▍' : '')}
+              </ReactMarkdown>
+            </div>
+          </div>
+        ) : (
+          // ASSISTANT: Bekommt KEINE Bubble, nur die Prose-Klassen für Layout
           <div
             className={cls(
-              'prose prose-sm sm:prose-base prose-invert max-w-none',
+              'prose prose-sm sm:prose-base prose-invert max-w-none', // Nur Typografie, kein Hintergrund/Border
               'prose-headings:font-semibold prose-h1:text-xl prose-h2:text-lg prose-h3:text-base',
               'prose-p:leading-relaxed prose-a:underline',
               'prose-strong:text-white',
               'prose-blockquote:border-l prose-blockquote:border-white/20 prose-blockquote:pl-4',
               'prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5',
               'prose-img:rounded-lg',
-              'prose-code:bg-black/30 prose-code:border prose-code:border-white/15 prose-code:rounded-md',
-              'prose-pre:bg-transparent prose-pre:p-0'
+              // Style Code-Blöcke und Inline-Code konsistent (wird vom SyntaxHighlighter/Markdown-Komponenten übernommen)
+              'prose-code:bg-black/30 prose-code:border prose-code:border-white/15 prose-code:rounded-md prose-code:px-1 prose-code:py-0.5 prose-code:text-[0.85em]',
+              'prose-pre:bg-transparent prose-pre:p-0' // Neutralisiert Prose-Pre-Styling, SyntaxHighlighter übernimmt
             )}
           >
             <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
               {message.content || (isStreaming ? '▍' : '')}
             </ReactMarkdown>
           </div>
-        </div>
+        )}
       </div>
     </div>
   );
