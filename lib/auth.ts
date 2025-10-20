@@ -16,7 +16,7 @@ export async function getSession() {
  * Holt den eingeloggten Prisma-User-Datensatz basierend auf der Session.
  * Wirft einen Fehler, wenn niemand eingeloggt ist.
  */
-export async function getPrismaUserFromSession(): Promise<User> {
+export async function ensureUser(): Promise<User> {
   const session = await getSession();
 
   if (!session?.user?.id) {
