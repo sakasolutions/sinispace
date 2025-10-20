@@ -339,7 +339,7 @@ export default function ChatPage() {
           <div className="ml-auto flex items-center gap-2">
             {/* Abmelden */}
             <button
-              onClick={() => signOut({ callbackUrl: `${process.env.NEXTAUTH_URL}/login` })}
+              onClick={() => signOut({ callbackUrl: '/login' })}
               className="inline-flex items-center justify-center sm:justify-start rounded-lg border border-red-400/30 bg-red-500/10 text-sm hover:bg-red-500/20 text-red-300 h-8 w-8 sm:w-auto sm:px-3 sm:py-1.5"
               title="Abmelden"
             >
