@@ -4,7 +4,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
-const STRIPE_CHECKOUT_URL = "https://checkout.stripe.com/c/pay_LINK_HIER_EINFÜGEN";
+const STRIPE_CHECKOUT_URL = "https://buy.stripe.com/6oU6oI6vW2jLfrudeJawo04";
 const OWNER_EMAIL = "hello@sinispace.app"; // <-- deine Empfangsadresse
 
 export default function PaymentPage() {

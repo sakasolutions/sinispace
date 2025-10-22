@@ -113,7 +113,7 @@ export default function Header() {
             Login
           </Link>
           <Link href="/payment" className={ctaBase}>
-            Kostenlos starten
+            Jetzt starten
           </Link>
         </div>
 
@@ -158,7 +158,7 @@ export default function Header() {
               Login
             </Link>
             <Link href="/payment" className={mobileCtaBase} onClick={closeMenu}>
-              Kostenlos starten
+              Jetzt starten
             </Link>
           </div>
         </div>
