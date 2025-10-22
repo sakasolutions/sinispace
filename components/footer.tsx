@@ -31,7 +31,7 @@ export default function Footer() {
           <div>
             <div className="font-medium">Kontakt</div>
             <ul className="mt-3 space-y-2 text-zinc-600">
-              <li><a href="mailto:hello@sinispace.app" className="hover:text-black">hello@sinispace.app</a></li>
+              <li><a href="mailto:hello@sinispace.app" className="hover:text-black">kontakt@sinispace.app</a></li>
             </ul>
           </div>
         </div>

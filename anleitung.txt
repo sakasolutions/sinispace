@@ -1,0 +1,26 @@
+
+
+
+
+git add . (Alle Änderungen vormerken)
+
+git commit -m "Admin-Benachrichtigung für Sinispace hinzugefügt" (Änderungen lokal speichern)
+
+git push (Änderungen zu GitHub hochladen)
+
+
+
+
+
+
+ssh sinan@152.53.20.42 (Auf dem Server einloggen)
+
+cd /home/sinan/sinispace (In den Projektordner wechseln)
+
+git pull (Änderungen von GitHub herunterladen)
+
+npm install (Pakete aktualisieren, falls nötig)
+
+npm run build (Wichtigster Schritt: Den geänderten TypeScript-Code in JavaScript "übersetzen")
+
+pm2 restart sinispace (Den laufenden Server mit dem neuen Code neustarten)
