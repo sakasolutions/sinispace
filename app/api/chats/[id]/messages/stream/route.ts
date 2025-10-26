@@ -12,109 +12,57 @@ export const dynamic = 'force-dynamic';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-// --- NEU: Definition der 2 relevanten System-Prompts ---
+// --- System-Prompts ---
 
-/**
- * PFAD A: Für billige, schnelle Alltagsanfragen.
- */
 const SIMPLE_SYSTEM_PROMPT = `
 Du bist ein hilfreicher und freundlicher Assistent. Sprich standardmäßig DEUTSCH.
 Antworte klar, präzise und auf den Punkt. Nutze Markdown (#, ##, Listen) für die Struktur.
 `.trim();
 
 /**
- * PFAD B: Für Pro-Nutzer & Projektanfragen.
- * (GEÄNDERT: Die Follow-Up-Regel für "Schnelle Zusammenfassung" ist jetzt dynamisch)
+ * (NEU) PFAD B: Der "Dynamische Projekt-Leiter"
+ * Ersetzt den alten Router-Prompt.
  */
 const PRO_ROUTER_SYSTEM_PROMPT = `
-Du bist „SiniSpace Assistant“. Sprich standardmäßig DEUTSCH.
+Du bist „SiniSpace Assistant“, ein hochintelligenter, professioneller KI-Berater. Sprich standardmäßig DEUTSCH.
 
 --------------------------------------------------
-DEINE KERN-AUFGABE: DER PROJEKT-ROUTER
+DEINE KERN-AUFGABE: DER DYNAMISCHE PROJEKT-LEITER
 --------------------------------------------------
-Bewerte JEDE neue Nutzeranfrage SOFORT und entscheide dich für EINEN von ZWEI Pfaden:
+Bewerte JEDE neue Nutzeranfrage, die als "PROJECT" (z.B. Business, Marketing, Plan) eingestuft wird.
+Dein Ziel ist es, den NUTZEN für den Kunden zu maximieren. Wähle als Experte die beste ERSTE REAKTION aus einer dieser drei Optionen:
 
-### PFAD A: Die "Experten-Antwort" (Standardfall)
-Dies ist der Pfad für 90% aller Anfragen:
-- Allgemeine Wissensfragen (z. B. "Was ist ein API?")
-- Kreative Aufgaben (z. B. "Schreib ein Gedicht")
-- Einfache Anfragen (z. B. "Rezept für Carbonara", "Witz über Katzen")
-- Smalltalk
-- Der Nutzer befindet sich bereits in einem Projekt-Workflow und stellt eine Folgefrage.
+1.  **OPTION A: Die SOFORT-LÖSUNG (Checkliste)**
+    * **Wann:** Wenn die Anfrage klar und fokussiert ist und eine "Schnelle Zusammenfassung" den meisten Wert bietet (z.B. "Setup für Acrylmalerei", "Plan für Schmuck-Marketing").
+    * **Aktion:** Antworte *direkt* mit einer maßgeschneiderten Checkliste. Beginne mit "Absolut, hier ist dein persönliches Setup." und generiere einen \`## Mein Vorschlag – „Ultimatives Setup“\`-Block (6-10 individuelle Punkte) + eine CTA-Frage.
 
-**WENN DU PFAD A WÄHLST:**
-1.  Gib SOFORT die bestmögliche, direkte und vollständige Antwort.
-2.  Folge den "Prinzipien" (siehe unten) für Struktur und Stil (Kurzfassung, Markdown etc.).
-3.  **WICHTIG:** Biete KEINEN Projekt-Modus an. Schließe die Antwort natürlich ab.
+2.  **OPTION B: Das GEFÜHRTE PROJEKT (Phasen-Angebot)**
+    * **Wann:** Wenn das Projekt groß oder komplex ist (z.B. "App bauen", "komplettes Business von Null gründen") und ein Phasen-Plan (Branding, Content, Sales, etc.) sinnvoller ist als eine einzelne Checkliste.
+    * **Aktion:** Schlage dem Nutzer *direkt* vor, das Projekt in Phasen zu gliedern.
+    * **Beispiel-Antwort:** "Großartig. Das ist ein umfangreiches Projekt. Ich schlage vor, wir gehen das in 3 Phasen an: 1. Fundament & Branding, 2. Angebot & Content, 3. Wachstum & Sales. Wollen wir mit Phase 1: Fundament & Zielgruppe starten?"
 
----
-
-### PFAD B: Das "Geführte Projekt" (Spezialfall)
-Dies ist der Pfad für 10% der Anfragen – wenn der Nutzer ein NEUES, echtes PROBLEM lösen oder ein VORHABEN starten will.
-Trigger-Beispiele:
-- "Marketingplan für..."
-- "Business für meine Freundin ankurbeln..."
-- "Wie verkaufe ich X..."
-- "Ich brauche ein komplettes Setup für..."
-
-**WENN DU PFAD B WÄHLST (und es eine NEUE Anfrage ist):**
-1.  **STOPP!** Gib NICHT sofort die volle Lösung.
-2.  Deine *einzige* Antwort muss das "Projekt-Angebot" sein.
-3.  Antworte *genau* in diesem Format:
-
-    "Das ist ein spannendes Vorhaben! Es klingt nach einem echten Projekt.
-
-    Um hier wirklich professionelle Ergebnisse zu erzielen, können wir das auf zwei Arten angehen:
-
-    1.  **Schnelle Zusammenfassung:** Ich gebe dir sofort mein „Ultimatives Setup“ – eine dichte Checkliste mit den wichtigsten Hebeln, um sofort loszulegen.
-
-    2.  **Geführtes Projekt:** Wir behandeln das wie ein echtes Business-Projekt. Ich führe dich Schritt für Schritt durch die entscheidenden Phasen (z. B. Branding, Content, Sales-Funnel, Wachstum), stelle dir die richtigen Fragen und wir erarbeiten einen wasserdichten Plan.
-
-    Was bevorzugst du? Die **[Schnelle Zusammenfassung]** oder das **[Geführte Projekt]**?"
-
-4.  Warte auf die Antwort des Nutzers.
+3.  **OPTION C: Die KRITISCHE RÜCKFRAGE**
+    * **Wann:** Wenn eine entscheidende Information fehlt, um eine gute Antwort (A oder B) zu geben (z.B. "Ich brauche einen Marketingplan" -> aber für was? Budget? Zielgruppe?).
+    * **Aktion:** Stelle die *eine*, wichtigste Rückfrage, die du brauchst, um professionell zu antworten.
+    * **Beispiel-Antwort:** "Verstanden. Bevor ich den Plan erstelle: Was ist das primäre Ziel? Geht es um schnelle Verkäufe oder um langfristigen Markenaufbau?"
 
 --------------------------------------------------
-PRINZIPIEN (Für PFAD A & Follow-Ups)
+WICHTIGE REGELN
+--------------------------------------------------
+- **ENTSCHEIDE DU!** Biete dem Nutzer *niemals* die Wahl zwischen "Schnell" und "Geführt" an. Entscheide du als Experte, welcher Pfad (A, B oder C) der beste ist, und führe ihn aus.
+- **FOLGE-ANFRAGEN:** Wenn du ein "Geführtes Projekt" (Option B) gestartet hast, bleibe in diesem Modus und führe den Nutzer durch die Phasen, indem du weitere Fragen stellst.
+
+--------------------------------------------------
+PRINZIPIEN (Für Option A)
 --------------------------------------------------
 1) **Wahrheit & Genauigkeit zuerst.** Keine erfundenen Fakten/Quellen.
-2) **Mehrwert & Kontext:** Erkläre *warum* etwas wichtig ist und *wie* es praktisch umgesetzt werden kann.
-3) **Struktur & Stil:**
-   - Beginne mit einer **Kurzfassung** (2–4 Sätze) (außer bei Pfad B).
+2. **Mehrwert & Kontext:** Erkläre *warum* etwas wichtig ist und *wie* es praktisch umgesetzt werden kann.
+3. **Struktur & Stil:**
+   - Beginne mit einer **Kurzfassung** (2–4 Sätze).
    - Nutze Markdown (Überschriften mit #, ##, ###, Listen, **fett**, Tabellen).
    - Nutze natürliche, lebendige Sprache.
 4. **Bei Logik/Mathe/Code:** Zeige nachvollziehbare Schritte.
 5. **Stimme:** Freundlich, professionell, inspirierend – wie ein erfahrener Mentor.
-6. **Zielniveau:** ChatGPT-4o / Gemini 2.5 Pro.
-
---------------------------------------------------
-FOLLOW-UP-REGELN (NACH PFAD B)
---------------------------------------------------
-- **Wenn Nutzer "Schnelle Zusammenfassung" wählt:**
-  Antworte SOFORT mit: "Absolut, hier ist dein persönliches Setup.".
-  Generiere dann einen Abschnitt \`## Mein Vorschlag – „Ultimatives Setup“\`.
-  Erstelle eine **individuelle Checkliste mit 6-10 Punkten**, die *präzise auf das Problem des Nutzers* zugeschnitten ist (z.B. für "Schmuck", "Acrylmalerei", "Café" etc.).
-  Schließe mit einer kurzen, passenden CTA-Frage (z.B. "Soll ich dir dafür einen Content-Kalender erstellen?").
-
-- **Wenn Nutzer "Geführtes Projekt" wählt:**
-  Antworte mit: "Großartig. Fangen wir professionell an. Jedes erfolgreiche Projekt steht auf mehreren Säulen. Für dein Ziel [Ziel des Nutzers, z.B. 'Kunst verkaufen'] habe ich folgenden Phasen-Plan:
-  
-  **Phase 1: Fundament & Branding**
-  (Wofür stehst du? Wer ist der Traumkunde? Was macht dich einzigartig?)
-  
-  **Phase 2: Content- & Angebots-Maschine**
-  (Was genau wird verkauft? Welche Inhalte (Bilder/Videos) brauchen wir?)
-  
-  **Phase 3: Der Sales-Funnel**
-  (Wie genau kauft jemand? Per DM? Über einen Shop?)
-  
-  **Phase 4: Traffic & Wachstum**
-  (Woher kommen die Leute? (Ads, Kooperationen, SEO?))
-  
-  ---
-  **Lass uns mit Phase 1: Fundament & Branding beginnen.**
-  
-  Meine erste Frage: [Stelle die erste, wichtigste Frage zu Phase 1, z.B. "Wie würdest du den einzigartigen Stil in 3 Worten beschreiben?"]"
 `.trim();
 
 
@@ -122,7 +70,7 @@ FOLLOW-UP-REGELN (NACH PFAD B)
  * Der "Wachmann": Klassifiziert Anfragen, um Token zu sparen.
  */
 async function runPreflightCheck(userQuery: string): Promise<'SIMPLE' | 'PROJECT'> {
-  const model = 'gpt-4o-mini'; // Günstiges & schnelles Modell für die Klassifizierung
+  const model = 'gpt-4o-mini'; 
   const prompt = `Klassifiziere die Nutzeranfrage. Antworte NUR mit 'SIMPLE' oder 'PROJECT'.
 SIMPLE = Smalltalk, Witze, Rezepte, allgemeine Wissensfragen, Code-Fragen, Übersetzungen.
 PROJECT = Business-Pläne, Marketing-Strategien, App-Ideen, komplexe Lösungsfindungen, Projekt-Setups (z.B. "Acryl-Business ankurbeln", "Marketingplan erstellen").
@@ -133,7 +81,7 @@ Anfrage: ${userQuery}`;
       model: model,
       messages: [{ role: 'user', content: prompt }],
       temperature: 0,
-      max_tokens: 5, // 'SIMPLE' oder 'PROJECT'
+      max_tokens: 5, 
     });
     const result = completion.choices[0].message.content?.trim().toUpperCase();
     if (result === 'PROJECT') {
@@ -142,14 +90,14 @@ Anfrage: ${userQuery}`;
     return 'SIMPLE';
   } catch (e) {
     console.error('Fehler im Preflight-Check:', e);
-    return 'SIMPLE'; // Im Zweifel als 'SIMPLE' einstufen, um Kosten zu sparen
+    return 'SIMPLE'; 
   }
 }
 
 
 /** ---------- Qualitäts-Defaults (zentral) ---------- */
 const OPENAI_GEN = {
-  temperature: 0.45,
+  temperature: 0.7, // GEÄNDERT auf 0.7
   top_p: 0.9,
   max_tokens: 12288,
   presence_penalty: 0.3,
@@ -157,7 +105,7 @@ const OPENAI_GEN = {
 } as const;
 
 const GEMINI_GEN = {
-  temperature: 0.45,
+  temperature: 0.7, // GEÄNDERT auf 0.7
   topP: 0.9,
   topK: 64,
   maxOutputTokens: 12288,
@@ -240,9 +188,6 @@ async function fetchImageAsBase64Part(url: string): Promise<Part | null> {
   }
 }
 
-/** ---------- CTA-Templates & Helfer ---------- */
-// GELÖSCHT: isProfessionalQuery, buildClosingProposal, ensureClosingSection
-
 
 /** ---------- Route ---------- */
 export async function POST(req: Request, ctx: any) {
@@ -256,7 +201,6 @@ export async function POST(req: Request, ctx: any) {
     };
 
     const user = await getPrismaUserFromSession();
-    // Holen den 'modelLevel' aus der DB
     const chat = await prisma.chat.findFirst({
       where: { id: chatId, userId: user.id },
       select: { id: true, model: true, modelLevel: true }, 
@@ -271,13 +215,12 @@ export async function POST(req: Request, ctx: any) {
       return NextResponse.json({ error: 'Last message must be user' }, { status: 400 });
     }
 
-    // Speichere die User-Nachricht
     await prisma.message.create({ data: { chatId: chat.id, role: 'user', content: last.content } });
 
     let assistantText = '';
     const imageUrls = extractImageUrls(last.content);
 
-    // --- "Modell-Kaskade" Logik ---
+    // --- "Modell-Kaskade" Logik (unverändert) ---
     let systemPrompt: string;
     let chosenModel: string;
     let effectiveModelLevel = chat.modelLevel as 'simple' | 'pro';
@@ -286,26 +229,22 @@ export async function POST(req: Request, ctx: any) {
     const preferredProModel = (body.model ?? chat.model) as string;
 
     if (effectiveModelLevel === 'pro') {
-      // 1. DIES IST BEREITS EIN PRO-CHAT
       console.log(`🚀 [PRO CHAT] Modell: ${preferredProModel}`);
-      systemPrompt = PRO_ROUTER_SYSTEM_PROMPT;
+      systemPrompt = PRO_ROUTER_SYSTEM_PROMPT; // Benutzt den NEUEN Pro-Prompt
       chosenModel = preferredProModel;
 
     } else {
-      // 2. DIES IST EIN "SIMPLE" CHAT (Standard)
       console.log(`[PREFLIGHT] Prüfe Intent für: "${last.content.substring(0, 40)}..."`);
       const intent = await runPreflightCheck(last.content);
 
       if (intent === 'PROJECT') {
-        // 2a. WACHMANN SAGT: "PROJECT" -> Upgrade!
         console.log(`🚀 [PREFLIGHT -> PROJECT] Upgrade auf Pro-Modell: ${preferredProModel}`);
         effectiveModelLevel = 'pro';
-        systemPrompt = PRO_ROUTER_SYSTEM_PROMPT;
+        systemPrompt = PRO_ROUTER_SYSTEM_PROMPT; // Benutzt den NEUEN Pro-Prompt
         chosenModel = preferredProModel;
-        isNewProjectOffer = true; // DB muss aktualisiert werden!
+        isNewProjectOffer = true;
       
       } else {
-        // 2b. WACHMANN SAGT: "SIMPLE" -> Bleib billig!
         const simpleModel = preferredProModel.startsWith('gemini') ? 'gemini-1.5-flash-latest' : 'gpt-4o-mini';
         console.log(`🚀 [PREFLIGHT -> SIMPLE] Nutze günstiges Modell: ${simpleModel}`);
         effectiveModelLevel = 'simple';
@@ -321,7 +260,6 @@ export async function POST(req: Request, ctx: any) {
         const send = (obj: unknown) => controller.enqueue(`data: ${JSON.stringify(obj)}\n\n`);
 
         try {
-          // DB-Upgrade ausführen
           if (isNewProjectOffer) {
             await prisma.chat.update({
               where: { id: chat.id },
@@ -330,17 +268,13 @@ export async function POST(req: Request, ctx: any) {
             console.log(`[DB UPDATE] Chat ${chat.id} ist jetzt "pro"`);
           }
 
-          // Die In-Stream-Politur-Anweisung
           const politurPrompt = `
 
 Bitte überarbeite deine eigene Antwort während des Schreibens:
 - gliedere klar mit Markdown-Überschriften (#, ##, ###),
 - streiche Dopplungen,
-- füge – wo sinnvoll – kurze Checklisten/Beispiele hinzu,
 - nutze natürliche, lebendige Sprache statt Bulletpoint-Monotonie.
-${effectiveModelLevel === 'pro' ? '- Wenn du eine "Ultimatives Setup"-Checkliste erstellst, stelle sicher, dass sie 6-10 *maßgeschneiderte* Punkte und eine CTA-Frage enthält.' : ''}
 `;
-
 
           if (chosenModel.startsWith('gpt')) {
             // ------------ OpenAI (GPT-4o/mini) ------------
@@ -372,7 +306,7 @@ ${effectiveModelLevel === 'pro' ? '- Wenn du eine "Ultimatives Setup"-Checkliste
             const completion = await openai.chat.completions.create({
               model: chosenModel as any,
               stream: true,
-              ...OPENAI_GEN,
+              ...OPENAI_GEN, // Benutzt die NEUE Temperatur
               messages: openaiMessages,
             });
 
@@ -383,11 +317,8 @@ ${effectiveModelLevel === 'pro' ? '- Wenn du eine "Ultimatives Setup"-Checkliste
                 send({ type: 'delta', text: delta });
               }
             }
-
-            // ---------- Optionaler Refine-Pass (OpenAI) ----------
-            if (DO_REFINE && assistantText.length > REFINE_TRIGGER_LEN) {
-              // ... (Refine-Logik, falls benötigt) ...
-            }
+            
+            // Refine-Pass...
 
           } else {
             // ------------ Gemini (Vertex AI) ------------
@@ -404,7 +335,7 @@ ${effectiveModelLevel === 'pro' ? '- Wenn du eine "Ultimatives Setup"-Checkliste
             });
 
             const history = body.messages.slice(0, -1).map((m) => ({
-              role: m.role === 'assistant' ? 'model' : 'user',
+              role: m.role === 'assistant' ? 'model' : 'user', // <-- HIER KORRIGIERT
               parts: [{ text: m.content ?? '' }],
             }));
 
@@ -414,14 +345,14 @@ ${effectiveModelLevel === 'pro' ? '- Wenn du eine "Ultimatives Setup"-Checkliste
             for (const url of imageUrls) {
               let imagePart: Part | null = null;
               if (url.startsWith('/uploads/')) imagePart = await toInlineDataFromLocalUpload(url);
-              else if (/^httpska?:\/\//i.test(url)) imagePart = await fetchImageAsBase64Part(url);
+              else if (/^https?:\/\//i.test(url)) imagePart = await fetchImageAsBase64Part(url);
               if (imagePart) userParts.push(imagePart);
               else console.warn(`Konnte Bild ${url} nicht verarbeiten.`);
             }
 
             const chatSession = model.startChat({
               history,
-              generationConfig: GEMINI_GEN,
+              generationConfig: GEMINI_GEN, // Benutzt die NEUE Temperatur
             });
 
             const result = await chatSession.sendMessageStream(userParts);
@@ -434,13 +365,9 @@ ${effectiveModelLevel === 'pro' ? '- Wenn du eine "Ultimatives Setup"-Checkliste
               }
             }
             
-            // ... (Refine-Pass für Gemini, falls DO_REFINE = true) ...
+            // Refine-Pass...
             
           }
-
-          // **Failsafe: Abschluss-Block (GELÖSCHT)**
-          // Wir vertrauen jetzt darauf, dass das Pro-Modell die Anweisungen
-          // im PRO_ROUTER_SYSTEM_PROMPT befolgt.
 
           // Antwort speichern
           await prisma.message.create({
@@ -457,7 +384,7 @@ ${effectiveModelLevel === 'pro' ? '- Wenn du eine "Ultimatives Setup"-Checkliste
           controller.close();
         } catch (err) {
           console.error('stream error:', err);
-          const errorMessage = err instanceof Error ? err.message : 'An unknown stream error occurred';
+          const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
           send({ type: 'error', message: `API Fehler: ${errorMessage}` });
           controller.error(err);
         }

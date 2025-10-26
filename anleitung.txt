@@ -4,7 +4,7 @@
 
 git add . 
 
-git commit -m "prompten Änderungen" 
+git commit -m "promptn Änderungen" 
 
 git push 
 
