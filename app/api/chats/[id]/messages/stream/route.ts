@@ -22,27 +22,29 @@ PRINZIPIEN:
 3) Bei Logik/Mathe/Code: zeige nachvollziehbare, knappe Schritte. Code mit korrektem Fence (\`\`\`ts, \`\`\`bash etc.).
 4) Effektiv mitdenken: Liefere die Lösung + ggf. 1–2 sinnvolle Alternativen/Verbesserungen. Wo sinnvoll: kurze Checklisten/Beispiele.
 5) Halte dich an die Nutzersprache (Standard: Deutsch). Antworte prägnant, freundlich, professionell.
+6) Denke BEVOR du antwortest kurz über Absicht → Plan → finale Antwort nach. Erzeuge als Ausgabe nur die finale Antwort, nicht deine Notizen.
+7) Zielqualität: Antworten sollen dem Niveau von ChatGPT-4o / Gemini Pro entsprechen – tiefgründig, hilfreich, natürlich formuliert.
 `.trim();
 
 /** ---------- Qualitäts-Defaults (zentral) ---------- */
 const OPENAI_GEN = {
-  temperature: 0.2,
+  temperature: 0.35,
   top_p: 0.9,
-  max_tokens: 4096,          // ggf. 3072/2048, falls Modell-/Quota-Limits
-  presence_penalty: 0.2,
+  max_tokens: 8192,          // ggf. auf 4096/3072 senken, falls Modell-/Quota-Limits greifen
+  presence_penalty: 0.3,
   frequency_penalty: 0.25,
 } as const;
 
 const GEMINI_GEN = {
-  temperature: 0.2,
+  temperature: 0.35,
   topP: 0.9,
   topK: 64,
-  maxOutputTokens: 4096,      // ggf. 3072/2048, falls Limits greifen
-  // responseMimeType: 'text/markdown', // Nur aktivieren, wenn in deiner Vertex-Version unterstützt
+  maxOutputTokens: 8192,      // ggf. reduzieren, falls Limits greifen
+  // responseMimeType: 'text/markdown', // aktivieren, wenn in deiner Vertex-Version unterstützt
 } as const;
 
 /** ---------- Optional: 2. Pass zur Mini-Verfeinerung ---------- */
-const DO_REFINE = false;        // auf true setzen, wenn du nach dem Stream eine kurze Politur willst
+const DO_REFINE = false;        // auf true setzen, wenn nach dem Stream eine kurze Politur gewünscht ist
 const REFINE_TRIGGER_LEN = 1200;
 
 /** ---------- Hilfsfunktionen ---------- */
@@ -161,7 +163,7 @@ export async function POST(req: Request, ctx: any) {
             console.log(`🚀 [OpenAI Stream] Modell: ${chosen}`);
 
             // Multimodal: Text + ggf. Bilder
-            const parts: any[] = [{ type: 'text', text: last.content ?? '' }];
+            const parts: any[] = [{ type: 'text', text: `${last.content ?? ''}\n\nBitte überarbeite deine eigene Antwort während des Schreibens: gliedere klar mit H1/H2/H3, streiche Dopplungen, füge wo sinnvoll kurze Checklisten/Beispiele hinzu.` }];
             for (const url of imageUrls) {
               if (/^https?:\/\//i.test(url)) {
                 parts.push({ type: 'image_url', image_url: { url } });
@@ -220,9 +222,6 @@ ${assistantText}`,
               });
               const refined = refine.choices?.[0]?.message?.content?.trim();
               if (refined && refined.length > 0) {
-                // Optional: dem Client kenntlich machen, dass dies die polierte Fassung ist
-                // send({ type: 'delta', text: '\n\n---\n' });
-                // send({ type: 'delta', text: refined });
                 assistantText = refined;
               }
             }
@@ -249,7 +248,9 @@ ${assistantText}`,
             }));
 
             // Userturn (Text + Bilder)
-            const userParts: Part[] = [{ text: last.content ?? '' }];
+            const userParts: Part[] = [{
+              text: `${last.content ?? ''}\n\nBitte überarbeite deine eigene Antwort während des Schreibens: gliedere klar mit H1/H2/H3, streiche Dopplungen, füge wo sinnvoll kurze Checklisten/Beispiele hinzu.`,
+            }];
             for (const url of imageUrls) {
               let imagePart: Part | null = null;
               if (url.startsWith('/uploads/')) imagePart = await toInlineDataFromLocalUpload(url);
@@ -296,8 +297,6 @@ ${assistantText}`,
                 .join('')
                 .trim();
               if (refined && refined.length > 0) {
-                // send({ type: 'delta', text: '\n\n---\n' });
-                // send({ type: 'delta', text: refined });
                 assistantText = refined;
               }
             }
