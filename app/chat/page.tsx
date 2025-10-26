@@ -6,31 +6,14 @@ import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { signOut } from 'next-auth/react';
-
-// --- IMPORTS FÜR SYNTAX HIGHLIGHTING ---
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-// --- ÄNDERUNG: Wir nutzen ein helles Theme für Code ---
 import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
+// ... (Alle Typen und API-Funktionen bleiben 1:1 gleich) ...
 type Role = 'user' | 'assistant' | 'system';
 type Model = 'gpt-4o' | 'gpt-4o-mini' | 'gemini-2.5-pro';
-
-type Chat = {
-  id: string;
-  title: string;
-  model: Model;
-  createdAt: string;
-};
-
-// ... (Alle Typen und API-Funktionen bleiben 1:1 gleich) ...
-type Message = {
-  id: string;
-  chatId: string;
-  role: Role;
-  content: string;
-  model?: Model;
-  createdAt: string;
-};
+type Chat = { id: string; title: string; model: Model; createdAt: string; };
+type Message = { id: string; chatId: string; role: Role; content: string; model?: Model; createdAt: string; };
 type Usage = { inputTokens?: number; outputTokens?: number; costUsd?: number };
 const nowIso = () => new Date().toISOString();
 const cls = (...xs: Array<string | false | null | undefined>) => xs.filter(Boolean).join(' ');
@@ -48,7 +31,6 @@ function joinTitle(project: string | null, name: string) {
   const cleanName = name.trim() || 'Neuer Chat';
   return project ? `${project.trim()} / ${cleanName}` : cleanName;
 }
-// ===== API Funktionen (bleiben 1:1 gleich) =====
 async function apiCreateChat(model: Model): Promise<Chat> {
   const r = await fetch('/api/chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model }) });
   if (!r.ok) throw new Error(`Chat anlegen fehlgeschlagen (${r.status})`);
@@ -319,10 +301,7 @@ export default function ChatPage() {
 
   // ===== Render =====
   return (
-    // --- ÄNDERUNG: Hintergrund ist jetzt ein sehr helles Grau (Rahmen) ---
     <div className="relative isolate h-[100dvh] overflow-hidden bg-neutral-50 text-neutral-900">
-      
-      {/* --- ÄNDERUNG: Header ist jetzt weiß mit Schatten --- */}
       <header className="h-12 sm:h-14 sticky top-0 z-20 backdrop-blur supports-[backdrop-filter]:bg-white/80 bg-white/80 border-b border-neutral-200 shadow-sm">
         <div className="mx-auto max-w-7xl h-full px-3 sm:px-6 flex items-center gap-2">
           <button
@@ -339,7 +318,6 @@ export default function ChatPage() {
             <span className="text-sm font-semibold tracking-wide truncate">SiniSpace</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            {/* Abmelden (Knopf-Stil angepasst) */}
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
               className="inline-flex items-center justify-center sm:justify-start rounded-lg border border-red-300 bg-red-50 text-sm hover:bg-red-100 text-red-700 h-8 w-8 sm:w-auto sm:px-3 sm:py-1.5"
@@ -350,8 +328,6 @@ export default function ChatPage() {
               </svg>
               <span className="hidden sm:inline sm:ml-1.5">Abmelden</span>
             </button>
-
-            {/* Settings (Knopf-Stil angepasst) */}
             <Link
               href="/settings"
               className="inline-flex items-center justify-center sm:justify-start rounded-lg border border-neutral-300 bg-white text-sm hover:bg-neutral-100 h-8 w-8 sm:w-auto sm:px-3 sm:py-1.5"
@@ -362,7 +338,6 @@ export default function ChatPage() {
               </svg>
               <span className="hidden sm:inline sm:ml-1.5">Einstellungen</span>
             </Link>
-            
             <select
               className="max-w-[44vw] sm:max-w-none text-xs sm:text-sm rounded-lg border border-neutral-300 bg-white px-2 py-1.5 outline-none hover:bg-neutral-100 truncate"
               value={activeChat?.model ?? 'gpt-4o'}
@@ -374,7 +349,6 @@ export default function ChatPage() {
               <option value="gpt-4o-mini">GPT-4o-mini (Schnell)</option>
               <option value="gemini-2.5-pro">Gemini 2.5 Pro (Aktuell)</option>
             </select>
-
             {isStreaming ? (
               <button onClick={handleStop} className="rounded-lg border border-neutral-300 bg-white px-2 sm:px-3 py-1.5 text-xs sm:text-sm hover:bg-neutral-100">
                 Stop
@@ -401,8 +375,6 @@ export default function ChatPage() {
 
       {/* Body */}
       <div className="mx-auto max-w-7xl h-[calc(100dvh-3rem)] sm:h-[calc(100dvh-3.5rem)] grid grid-cols-1 lg:grid-cols-[300px_1fr]">
-        
-        {/* --- ÄNDERUNG: Sidebar hat jetzt hellgrauen Hintergrund für Trennung --- */}
         <aside className="hidden lg:flex h-full border-r border-neutral-200 flex-col overflow-hidden bg-neutral-100">
           <div className="p-3 flex items-center gap-2 border-b border-neutral-200">
             <button
@@ -442,7 +414,6 @@ export default function ChatPage() {
           )}
         </aside>
 
-        {/* --- ÄNDERUNG: Mobile Sidebar auch hellgrau --- */}
         {sidebarOpen && (
           <div className="lg:hidden fixed inset-0 z-30">
             <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} aria-hidden />
@@ -483,7 +454,6 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* --- ÄNDERUNG: Chat Area ist jetzt weiß (für Kontrast zur Sidebar) --- */}
         <section className="h-full flex flex-col overflow-hidden bg-white">
           <div className="px-3 sm:px-6 pt-3 shrink-0">
             <div className="text-xs text-yellow-900 bg-yellow-400/20 border border-yellow-400/30 rounded-lg p-2">
@@ -493,8 +463,8 @@ export default function ChatPage() {
           </div>
 
           <div ref={listRef} className="flex-1 overflow-auto px-3 sm:px-6 py-4 overscroll-contain scroll-smooth">
-            {/* --- ÄNDERUNG: Lesebreite hier gesetzt --- */}
-            <div className="mx-auto w-full md:max-w-3xl space-y-3 sm:space-y-4">
+            {/* --- FEINSCHLIFF: Größerer Abstand zwischen Nachrichten --- */}
+            <div className="mx-auto w-full md:max-w-3xl space-y-4 sm:space-y-5">
               {activeMessages.map((m, i) => {
                 const prev = activeMessages[i - 1]; const grouped = !!(prev && prev.role === m.role);
                 return (
@@ -511,9 +481,7 @@ export default function ChatPage() {
             </div>
           </div>
 
-          {/* Composer (Farben angepasst) */}
           <div className="sticky bottom-0 z-10 px-3 sm:px-6 pb-3 shrink-0" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
-            {/* --- ÄNDERUNG: Stärkerer Schatten, solider Hintergrund --- */}
             <div className="mx-auto w-full md:max-w-3xl rounded-2xl border border-neutral-300 bg-white p-2 shadow-xl shadow-neutral-400/20">
               <div className="flex items-end gap-2">
                 <button
@@ -523,7 +491,8 @@ export default function ChatPage() {
                   aria-label="Datei anhängen"
                   disabled={!activeChat || uploading || isStreaming}
                 >
-                  {uploading ? (
+                  {/* ... (Upload-Icon unverändert) ... */}
+                   {uploading ? (
                     <svg className="animate-spin h-5 w-5 text-neutral-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
@@ -536,11 +505,10 @@ export default function ChatPage() {
                 </button>
                 <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt" className="hidden" onChange={handleFileChange} />
                 <textarea
-                  className="flex-1 min-h-10 max-h-40 h-10 resize-y rounded-xl border border-neutral-300 bg-white p-2 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 break-words"
+                  className="flex-1 min-h-10 max-h-40 h-10 resize-y rounded-xl border border-neutral-300 bg-white p-2 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-opacity-50 break-words" // <-- FEINSCHLIFF: Focus-Ring
                   placeholder={activeChat ? 'Nachricht an die KI …' : 'Erst einen Chat erstellen'}
                   value={draft}
                   onChange={(e) => setActiveDraft(e.target.value)}
-                  // HIER WAR DER FEHLER: 'SiftKey' statt 'shiftKey'
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
                   disabled={!activeChat || isStreaming}
                   aria-label="Nachricht schreiben"
@@ -553,7 +521,8 @@ export default function ChatPage() {
                   {isStreaming ? 'Senden…' : 'Senden'}
                 </button>
               </div>
-              <div className="mt-1 flex flex-wrap items-center gap-2 justify-between text-[11px] text-neutral-500 px-1">
+              {/* --- FEINSCHLIFF: Kleinerer Text unten --- */}
+              <div className="mt-1 flex flex-wrap items-center gap-2 justify-between text-[10px] text-neutral-500 px-1">
                 <div>Enter = senden • Shift+Enter = Zeilenumbruch</div>
                 {usage && (
                   <div className="hidden sm:block rounded-full border border-neutral-300 bg-white px-2 py-0.5">
@@ -571,7 +540,7 @@ export default function ChatPage() {
   );
 }
 
-// ===== Sub-Komponenten (SidebarChatList Farben angepasst) =====
+// ===== Sub-Komponenten (SidebarChatList Farben & Aktiver State angepasst) =====
 function SidebarChatList({
   chats, activeChatId, onSelect, onDelete, onRename, onMoveProject, projectFilter,
 }: {
@@ -604,7 +573,6 @@ function SidebarChatList({
     <div className="px-2 pb-4 space-y-4">
       {grouped.map(([group, items]) => (
         <div key={group}>
-          {/* --- ÄNDERUNG: Sidebar Textfarbe --- */}
           <div className="px-2 py-2 text-[11px] uppercase tracking-wider text-neutral-500 flex items-center justify-between">
             <span>{group === '—' ? 'Ohne Projekt' : group}</span>
           </div>
@@ -612,9 +580,9 @@ function SidebarChatList({
             {items.map((c) => {
               const isActive = activeChatId === c.id;
               return (
-                <li key={c.id} className={cls('rounded-lg border border-transparent hover:border-neutral-200')}>
-                  {/* --- ÄNDERUNG: Aktiver Chat-Button --- */}
-                  <div className={cls('flex items-center gap-1 px-2 py-1.5 rounded-lg', isActive && 'bg-white')}>
+                <li key={c.id}> {/* --- FEINSCHLIFF: Keine Hover-Border mehr --- */}
+                  {/* --- FEINSCHLIFF: Aktiver Chat bekommt dunkleren Hintergrund --- */}
+                  <div className={cls('flex items-center gap-1 px-2 py-1.5 rounded-lg', isActive ? 'bg-neutral-200' : 'hover:bg-neutral-200/60')}>
                     {editingId === c.id ? (
                       <input
                         ref={inputRef}
@@ -641,10 +609,10 @@ function SidebarChatList({
                         <div className="text-[11px] text-neutral-500">{c.model}</div>
                       </button>
                     )}
-                    {/* --- ÄNDERUNG: Sidebar Icons --- */}
+                    {/* --- FEINSCHLIFF: Icons bekommen besseren Hover --- */}
                     <button
                       onClick={() => setEditingId(prev => prev === c.id ? null : c.id)}
-                      className="h-7 w-7 flex-shrink-0 inline-flex items-center justify-center rounded-md border border-transparent text-neutral-500 hover:text-neutral-900 hover:border-neutral-300 hover:bg-white"
+                      className={cls("h-7 w-7 flex-shrink-0 inline-flex items-center justify-center rounded-md border border-transparent text-neutral-500 hover:text-neutral-900", isActive ? "hover:bg-neutral-300" : "hover:bg-neutral-200")}
                       title="Umbenennen"
                       aria-label="Umbenennen"
                     >
@@ -654,17 +622,17 @@ function SidebarChatList({
                     </button>
                     <button
                       onClick={() => onMoveProject(c.id, prompt('In welches Projekt verschieben? (leer = ohne Projekt)')?.trim() || null)}
-                      className="h-7 w-7 flex-shrink-0 inline-flex items-center justify-center rounded-md border border-transparent text-neutral-500 hover:text-neutral-900 hover:border-neutral-300 hover:bg-white"
+                      className={cls("h-7 w-7 flex-shrink-0 inline-flex items-center justify-center rounded-md border border-transparent text-neutral-500 hover:text-neutral-900", isActive ? "hover:bg-neutral-300" : "hover:bg-neutral-200")}
                       title="Projekt ändern"
                       aria-label="Projekt ändern"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.188l.003.174a2.25 2.25 0 0 0 1.883 2.188c.112.017.227.026.344.026h15.812c.117 0 .232-.009.344-.026a2.25 2.25 0 0 0 1.883-2.188l-.003-.174a2.25 2.25 0 0 0-1.883-2.188m-16.5 0c.112-.017.227-.026.344-.026h15.812c.117 0 .232-.009.344-.026m0 0C21.66 9.713 22.5 8.288 22.5 6.75c0-1.538-.84-2.963-2.094-3.69M3.75 9.776c.112-.017.227-.026.344-.026M3.75 9.776c-.112.017-.227.026-.344-.026C2.34 9.713 1.5 8.288 1.5 6.75c0-1.538.84-2.963 2.094-3.69m0 0C2.34 3.037 3.75 3 5.25 3h13.5c1.5 0 2.91.037 3.906.31" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.188l.003.174a2.25 2.25 0 0 0 1.883 2.188c.112.017.227.026.344.026h15.812c.117 0 .232-.009.344-.026a2.25 2.25 0 0 0 1.883-2.188l-.003-.174a2.25 2.25 0 0 0-1.883-2.188m-16.5 0c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344-.026m0 0C21.66 9.713 22.5 8.288 22.5 6.75c0-1.538-.84-2.963-2.094-3.69M3.75 9.776c.112-.017.227-.026.344-.026M3.75 9.776c-.112.017-.227.026-.344-.026C2.34 9.713 1.5 8.288 1.5 6.75c0-1.538.84-2.963 2.094-3.69m0 0C2.34 3.037 3.75 3 5.25 3h13.5c1.5 0 2.91.037 3.906.31" />
                       </svg>
                     </button>
                     <button
                       onClick={() => onDelete(c.id)}
-                      className="h-7 w-7 flex-shrink-0 inline-flex items-center justify-center rounded-md border border-transparent text-neutral-500 hover:text-neutral-900 hover:border-neutral-300 hover:bg-white"
+                      className={cls("h-7 w-7 flex-shrink-0 inline-flex items-center justify-center rounded-md border border-transparent text-neutral-500 hover:text-neutral-900", isActive ? "hover:bg-neutral-300" : "hover:bg-neutral-200")}
                       title="Löschen"
                       aria-label="Löschen"
                     >
@@ -686,7 +654,7 @@ function SidebarChatList({
   );
 }
 
-// ===== Sub-Komponente: MessageBubble (STARK GEÄNDERT für "Profi-Fokus") =====
+// ===== Sub-Komponente: MessageBubble (Farben & Lesbarkeit angepasst) =====
 function MessageBubble({
   message, onCopy, onEdit, isStreaming, grouped,
 }: {
@@ -694,59 +662,20 @@ function MessageBubble({
 }) {
   const isUser = message.role === 'user';
 
-  // Komponenten für Markdown (Syntax Highlighting etc.)
   const components = {
     pre: (props: React.HTMLAttributes<HTMLPreElement>) => (
-      <pre
-        {...props}
-        className={cls(
-          // --- ÄNDERUNG: Code-Block-Hintergrund für helles/dunkles Theme ---
-          isUser
-            ? 'my-3 rounded-lg border border-indigo-400/50 bg-black/20 p-0' // Dunkel auf blauer Bubble
-            : 'my-3 rounded-lg border border-neutral-200 bg-neutral-100 p-0', // Hell auf grauer Bubble
-          'whitespace-pre-wrap break-words overflow-auto max-w-full'
-        )}
-      />
+      <pre {...props} className={cls(isUser ? 'my-3 rounded-lg border border-indigo-400/50 bg-black/20 p-0' : 'my-3 rounded-lg border border-neutral-200 bg-neutral-100 p-0', 'whitespace-pre-wrap break-words overflow-auto max-w-full')} />
     ),
     code: ({ inline, className, children, ...rest }: any) => {
       if (inline) {
-        return (
-          <code
-            {...rest}
-            className={cls(
-              className,
-              // --- ÄNDERUNG: Inline-Code-Styling ---
-              isUser
-                ? 'rounded border border-indigo-300/50 bg-black/20 px-1 py-0.5 text-[0.85em] break-words font-normal'
-                : 'rounded border border-neutral-200 bg-neutral-100 px-1 py-0.5 text-[0.85em] break-words font-normal'
-            )}
-          >
-            {children}
-          </code>
-        );
+        return <code {...rest} className={cls(className, isUser ? 'rounded border border-indigo-300/50 bg-black/20 px-1 py-0.5 text-[0.85em] break-words font-normal' : 'rounded border border-neutral-200 bg-neutral-100 px-1 py-0.5 text-[0.85em] break-words font-normal')} >{children}</code>;
       }
       const match = /language-(\w+)/.exec(className || '');
       const lang = match ? match[1] : '';
-      return (
-        <SyntaxHighlighter
-          {...rest}
-          // --- ÄNDERUNG: Helles Syntax-Theme ---
-          style={oneLight}
-          language={lang}
-          PreTag="div"
-          // --- ÄNDERUNG: Heller Code-Block-Stil ---
-          className="my-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs leading-relaxed whitespace-pre-wrap break-words overflow-auto max-w-full"
-        >
-          {String(children).replace(/\n$/, '')}
-        </SyntaxHighlighter>
-      );
+      return <SyntaxHighlighter {...rest} style={oneLight} language={lang} PreTag="div" className="my-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs leading-relaxed whitespace-pre-wrap break-words overflow-auto max-w-full">{String(children).replace(/\n$/, '')}</SyntaxHighlighter>;
     },
     a: (props: any) => <a {...props} className="underline break-words" />,
-    table: (props: any) => (
-      <div className="max-w-full overflow-auto my-3 border border-neutral-300 rounded-lg">
-        <table {...props} className="w-full text-left border-collapse" />
-      </div>
-    ),
+    table: (props: any) => (<div className="max-w-full overflow-auto my-3 border border-neutral-300 rounded-lg"><table {...props} className="w-full text-left border-collapse" /></div>),
     thead: (props: any) => <thead {...props} className="bg-neutral-100" />,
     th: (props: any) => <th {...props} className="p-2 border-b border-neutral-300" />,
     td: (props: any) => <td {...props} className="p-2 border-b border-neutral-300" />,
@@ -754,29 +683,19 @@ function MessageBubble({
 
   return (
     <div className={cls('w-full flex', isUser ? 'justify-end' : 'justify-start')}>
-      
-      {/* --- ÄNDERUNG: Wrapper für den Inhalt ---
-          Steuert die *maximale Breite* der Bubbles.
-          Beide sind jetzt auf 90% Breite begrenzt, um nicht "billig" zu wirken.
-      */}
       <div className={cls('group', 'max-w-[90%]')}>
-        
-        {/* Header (Label & Buttons) */}
         {!grouped && (
           <div className={cls('mb-1.5 px-1 flex items-center gap-2', isUser ? 'justify-end' : 'justify-start')}>
-            <div className="text-[11px] font-medium text-neutral-600">{isUser ? 'Du' : 'Assistant'}</div>
+            {/* --- FEINSCHLIFF: Dunklerer Text für Label --- */}
+            <div className="text-[11px] font-medium text-neutral-700">{isUser ? 'Du' : 'Assistant'}</div>
             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
               {onEdit && <button onClick={onEdit} className="text-[11px] underline text-neutral-600 hover:text-neutral-900">Bearbeiten</button>}
               <button onClick={onCopy} className="text-[11px] underline text-neutral-600 hover:text-neutral-900">Kopieren</button>
             </div>
           </div>
         )}
-
-        {/* --- ÄNDERUNG: Bubble-Styling --- */}
         {isUser ? (
-          // USER: Bekommt eine kräftige, blaue Akzent-Bubble
           <div className={cls('rounded-2xl px-3.5 py-2.5 break-words', 'bg-indigo-600 text-white')}>
-            {/* --- ÄNDERUNG: prose-invert für weißen Text auf dunkler Bubble --- */}
             <div className="prose prose-sm sm:prose-base prose-invert max-w-none prose-code:font-normal">
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
                 {message.content || (isStreaming ? '▍' : '')}
@@ -784,25 +703,18 @@ function MessageBubble({
             </div>
           </div>
         ) : (
-          // ASSISTANT: Bekommt eine saubere, hellgraue Bubble
-          <div
-            className={cls('rounded-2xl px-3.5 py-2.5 break-words', 'bg-neutral-100 border border-neutral-200')}
-          >
-            {/* --- ÄNDERUNG: WICHTIG! max-w-none entfernt! ---
-                'prose' allein begrenzt die Lesebreite auf 65ch (ca. 65 Zeichen).
-                DAS ist der Hauptgrund, warum es "professioneller" aussieht.
-            */}
+          <div className={cls('rounded-2xl px-3.5 py-2.5 break-words', 'bg-neutral-100 border border-neutral-200')}>
             <div
               className={cls(
-                'prose prose-sm sm:prose-base prose-neutral', // KEIN max-w-none
-                'prose-headings:font-semibold prose-h1:text-xl prose-h2:text-lg prose-h3:text-base',
-                'prose-p:leading-relaxed prose-a:underline',
-                'prose-strong:text-neutral-900',
-                'prose-blockquote:border-l prose-blockquote:border-neutral-300 prose-blockquote:pl-4',
+                // --- FEINSCHLIFF: Dunklerer Text & Links für Assistant ---
+                'prose prose-sm sm:prose-base prose-neutral text-neutral-800 prose-a:text-indigo-600 prose-strong:text-neutral-900',
+                'prose-headings:font-semibold prose-headings:text-neutral-900 prose-h1:text-xl prose-h2:text-lg prose-h3:text-base',
+                'prose-p:leading-relaxed',
+                'prose-blockquote:border-l prose-blockquote:border-neutral-300 prose-blockquote:pl-4 prose-blockquote:text-neutral-600',
                 'prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5',
                 'prose-img:rounded-lg',
-                'prose-code:font-normal', // stellt sicher, dass code nicht fett ist
-                'prose-pre:bg-transparent prose-pre:p-0' // Neutralisiert Prose-Pre-Styling
+                'prose-code:font-normal',
+                'prose-pre:bg-transparent prose-pre:p-0'
               )}
             >
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>

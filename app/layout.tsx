@@ -1,7 +1,11 @@
 // app/layout.tsx
 import type { Metadata } from "next";
+import { Inter } from 'next/font/google'; // Import 'Inter'
 import "./globals.css";
-import AuthProvider from "@/components/AuthProvider"; // <- SessionProvider-Wrapper
+import AuthProvider from "@/components/AuthProvider";
+
+// Initialize the font
+const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "SiniSpace",
@@ -11,7 +15,8 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="de">
-      <body>
+      {/* Add the font class to the body */}
+      <body className={inter.className}>
         <AuthProvider>
           {children}
         </AuthProvider>

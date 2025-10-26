@@ -1,23 +1,22 @@
 /* app/globals.css */
 
-/* Tailwind v4 laden */
+/* Load Tailwind */
 @import "tailwindcss";
 
-/* >>> WICHTIG: Plugins in v4 per CSS registrieren */
+/* Register plugins */
 @plugin "@tailwindcss/typography";
 
-/* (Optional) leichte Prose-Feinheiten für dein Dark-UI */
 @layer base {
   html { scroll-behavior: smooth; }
   body {
-    font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+    /* REMOVED: font-family rule is now handled by Tailwind */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     background: transparent;
   }
 }
 
-/* Typography-Tuning (greift auf alle .prose Container) */
+/* Your existing typography tuning */
 @layer components {
   /* Dark-Mode Farben/Kontraste */
   .prose.prose-invert {
@@ -32,7 +31,7 @@
     --tw-prose-td-borders: rgb(255 255 255 / 0.1);
   }
 
-  /* Kompakteres Spacing und Headings für Chat-Bubbles */
+  /* Kompakteres Spacing und Headings */
   .prose :where(p):not(:where([class~="not-prose"] *)) {
     margin-top: 0.6em; margin-bottom: 0.6em; line-height: 1.7;
   }
@@ -48,15 +47,15 @@
   .prose :where(ul,ol):not(:where([class~="not-prose"] *)) { margin: 0.4em 0 0.8em; }
   .prose :where(li):not(:where([class~="not-prose"] *)) { margin: 0.2em 0; }
 
-  /* Inlines & Pre: passen zu deinem Dark-Theme */
+  /* Inlines & Pre */
   .prose :where(code):not(:where([class~="not-prose"] *)) {
     font-weight: 600; padding: 0.15rem 0.35rem; border-radius: 0.4rem;
     background: rgb(0 0 0 / 0.3); border: 1px solid rgb(255 255 255 / 0.15);
   }
   .prose :where(pre):not(:where([class~="not-prose"] *)) {
-    background: transparent; padding: 0; /* Padding macht dein Highlighter */
+    background: transparent; padding: 0;
   }
 
-  /* Bilder in Antworten hübsch abrunden */
+  /* Bilder */
   .prose :where(img):not(:where([class~="not-prose"] *)) { border-radius: 0.5rem; }
 }

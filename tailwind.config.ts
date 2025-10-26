@@ -1,6 +1,7 @@
 // tailwind.config.ts
-import type { Config } from 'tailwindcss'
-import typography from '@tailwindcss/typography'
+import type { Config } from 'tailwindcss';
+import typography from '@tailwindcss/typography';
+import defaultTheme from 'tailwindcss/defaultTheme'; // Import defaultTheme
 
 const config: Config = {
   content: [
@@ -9,6 +10,11 @@ const config: Config = {
   ],
   theme: {
     extend: {
+      // Set Inter as the default sans-serif font
+      fontFamily: {
+        sans: ['Inter', ...defaultTheme.fontFamily.sans],
+      },
+      // Your existing typography settings remain unchanged
       typography: ({ theme }) => ({
         invert: {
           css: {
@@ -32,7 +38,7 @@ const config: Config = {
             'ul,ol': { margin: '0.4em 0 0.8em' },
             li: { margin: '0.2em 0' },
             code: { fontWeight: '600', padding: '0.15rem 0.35rem', borderRadius: '0.4rem' },
-            pre: { padding: 0, background: 'transparent' }, // wir stylen Pre extern
+            pre: { padding: 0, background: 'transparent' }, // we style Pre externally
             table: { fontSize: '0.95rem' },
             'thead th': { fontWeight: '600' },
           },
@@ -41,5 +47,5 @@ const config: Config = {
     },
   },
   plugins: [typography],
-}
+};
 export default config;
