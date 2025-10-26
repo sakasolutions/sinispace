@@ -32,10 +32,10 @@ PRINZIPIEN:
 5) **Bei Logik/Mathe/Code:** Zeige nachvollziehbare Schritte; Code sauber mit korrektem Fence (\`\`\`ts, \`\`\`bash\`\`\`).
 6) **Stimme:** Freundlich, professionell, inspirierend – wie ein erfahrener Mentor oder Senior Consultant.
 7) **Zielniveau:** Liefere Antworten mit dem Tiefgang und Stil von ChatGPT-4o bzw. Gemini 2.5 Pro.
-8) **Abschluss:** Beende die Antwort mit einem Abschnitt **„Mein Vorschlag – Ultimatives Setup“**.
-   - Enthält 6–10 konkrete, umsetzbare Punkte (Checkliste/Angebotspaket).
-   - Schließe mit einer kurzen Frage/CTA, z. B. ob ein Content-Kalender, Templates oder nächste Schritte gewünscht sind.
-`.trim();
+8) **Abschluss (Situativ):** **NUR WENN** der Nutzer nach einem Plan, einer Strategie oder professionellem Rat fragt (z. B. Business, Marketing, Content-Planung), beende die Antwort mit einem Abschnitt **„Mein Vorschlag – Ultimatives Setup“**.
+   - Bei informellen oder kreativen Anfragen (z. B. Witze, Gedichte, allgemeine Fragen) lasse diesen Abschnitt weg und schließe natürlich.
+   - Wenn du den Setup-Abschnitt nutzt: 6–10 konkrete Punkte + kurze CTA-Frage.
+`.trim(); // GEÄNDERT: Punkt 8 ist jetzt situativ.
 
 /** ---------- Qualitäts-Defaults (zentral) ---------- */
 const OPENAI_GEN = {
@@ -132,6 +132,24 @@ async function fetchImageAsBase64Part(url: string): Promise<Part | null> {
 }
 
 /** ---------- CTA-Templates & Helfer ---------- */
+
+// NEU: Hilfsfunktion zur Intent-Erkennung
+/**
+ * Prüft, ob der User-Text nach einer professionellen Beratung / Strategie klingt.
+ */
+function isProfessionalQuery(userText: string): boolean {
+  if (!userText) return false;
+  const keywords = [
+    'setup', 'business', 'marketing', 'strategie', 'plan',
+    'umsatz', 'kunden', 'generieren', 'reichweite', 'verkaufen',
+    'shop', 'e-commerce', 'projekt', 'vorschlag', 'anbieten',
+    'acrylbilder', 'kunst', 'gemalt', 'malerei', 'business anzukurbeln'
+  ];
+  const regex = new RegExp(keywords.join('|'), 'i');
+  return regex.test(userText);
+}
+
+
 function buildClosingProposal(userText: string): string {
   const isArtMarketing = /acryl|kunst|künstler|malerei|instagram|pinterest|galerie|bilder|art|canvas/i.test(userText || '');
   if (isArtMarketing) {
@@ -166,9 +184,19 @@ function buildClosingProposal(userText: string): string {
 **Soll ich das sofort in einen konkreten 30-Tage-Plan mit Aufgaben pro Woche übersetzen?**`;
 }
 
+// GEÄNDERT: Diese Funktion prüft jetzt, ob der Abschluss-Block überhaupt nötig ist.
 function ensureClosingSection(text: string, userText: string): string {
   const alreadyHas = /mein vorschlag|ultimatives setup|nächste schritte|next steps/i.test(text || '');
   if (alreadyHas) return text;
+
+  // NEU: Prüfen, ob die Anfrage überhaupt ein "Setup" erfordert.
+  // Wenn nicht (z.B. bei der Katzen-Frage), einfach den Text zurückgeben.
+  if (!isProfessionalQuery(userText)) {
+    return text;
+  }
+
+  // Nur wenn es eine professionelle Anfrage war UND die KI das Setup vergessen hat,
+  // hängen wir das Standard-Setup an.
   const cta = buildClosingProposal(userText);
   return `${text.trim()}\n\n${cta.trim()}\n`;
 }
@@ -225,7 +253,7 @@ Bitte überarbeite deine eigene Antwort während des Schreibens:
 - streiche Dopplungen,
 - füge – wo sinnvoll – kurze Checklisten/Beispiele hinzu,
 - nutze natürliche, lebendige Sprache statt Bulletpoint-Monotonie.
-- beende mit dem Abschnitt **„Mein Vorschlag – Ultimatives Setup“** (6–10 Punkte + kurze CTA-Frage).`,
+- **Falls angebracht** (bei Business-/Strategiefragen), beende mit dem Abschnitt **„Mein Vorschlag – Ultimatives Setup“** (6–10 Punkte + kurze CTA-Frage).`, // GEÄNDERT
             }];
             for (const url of imageUrls) {
               if (/^https?:\/\//i.test(url)) {
@@ -277,10 +305,10 @@ Bitte überarbeite deine eigene Antwort während des Schreibens:
 - bessere Struktur (H1/H2/H3), Dopplungen kürzen
 - klare Checklisten/Beispiele einbauen, wo sinnvoll
 - inhaltlich nichts Neues erfinden, Ton & Sprache beibehalten
-- stelle sicher, dass ein Abschluss „Mein Vorschlag – Ultimatives Setup“ mit 6–10 Punkten vorhanden ist + kurze CTA-Frage.
+- stelle sicher, dass **falls es ein Business-Thema ist**, ein Abschluss „Mein Vorschlag – Ultimatives Setup“ mit 6–10 Punkten vorhanden ist + kurze CTA-Frage.
 
 --- ENTWURF ---
-${assistantText}`,
+${assistantText}`, // GEÄNDERT
                   },
                 ],
               });
@@ -320,7 +348,7 @@ Bitte überarbeite deine eigene Antwort während des Schreibens:
 - streiche Dopplungen,
 - füge – wo sinnvoll – kurze Checklisten/Beispiele hinzu,
 - nutze natürliche, lebendige Sprache statt Bulletpoint-Monotonie.
-- beende mit dem Abschnitt **„Mein Vorschlag – Ultimatives Setup“** (6–10 Punkte + kurze CTA-Frage).`,
+- **Falls angebracht** (bei Business-/Strategiefragen), beende mit dem Abschnitt **„Mein Vorschlag – Ultimatives Setup“** (6–10 Punkte + kurze CTA-Frage).`, // GEÄNDERT
             }];
             for (const url of imageUrls) {
               let imagePart: Part | null = null;
@@ -358,10 +386,10 @@ Bitte überarbeite deine eigene Antwort während des Schreibens:
 - bessere Struktur (H1/H2/H3), Dopplungen kürzen
 - klare Checklisten/Beispiele einbauen, wo sinnvoll
 - inhaltlich nichts Neues erfinden, Ton & Sprache beibehalten
-- stelle sicher, dass ein Abschluss „Mein Vorschlag – Ultimatives Setup“ mit 6–10 Punkten vorhanden ist + kurze CTA-Frage.
+- stelle sicher, dass **falls es ein Business-Thema ist**, ein Abschluss „Mein Vorschlag – Ultimatives Setup“ mit 6–10 Punkten vorhanden ist + kurze CTA-Frage.
 
 --- ENTWURF ---
-${assistantText}`,
+${assistantText}`, // GEÄNDERT
                 },
               ]);
               const refined = refine.response?.candidates?.[0]?.content?.parts
@@ -375,6 +403,7 @@ ${assistantText}`,
           }
 
           // **Failsafe: Abschluss-Block anhängen, falls Modell ihn nicht geliefert hat**
+          // GEÄNDERT: Diese Funktion hängt den Block jetzt nur noch an, wenn 'isProfessionalQuery' true ist
           const withClosing = ensureClosingSection(assistantText, last.content);
           if (withClosing.length > assistantText.length) {
             const append = withClosing.slice(assistantText.length);
