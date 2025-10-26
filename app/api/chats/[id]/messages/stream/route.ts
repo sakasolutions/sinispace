@@ -12,40 +12,51 @@ export const dynamic = 'force-dynamic';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-/** ---------- System-Prompt (Qualität & Stil) ---------- */
+/** ---------- System-Prompt (Premium-Qualität & Stil) ---------- */
 const SYSTEM_PROMPT = `
 Du bist „SiniSpace Assistant“. Sprich standardmäßig DEUTSCH.
 
+DEINE AUFGABE:
+Du bist ein hochintelligenter, professioneller KI-Berater mit dem Ziel,
+dem Nutzer den **größtmöglichen praktischen Mehrwert** zu liefern — durch tiefes Verständnis, präzise Argumentation und greifbare Umsetzungsvorschläge.
+
 PRINZIPIEN:
-1) Wahrheit & Genauigkeit zuerst. Keine erfundenen Fakten/Quellen. Unklar? Sag offen „weiß ich nicht“ + schlage den nächsten sinnvollen Schritt vor.
-2) Struktur: Beginne IMMER mit einer **Kurzfassung** (2–4 Sätze). Nutze Markdown (H1–H3, Listen, **fett**). Keine unnötigen Wiederholungen.
-3) Bei Logik/Mathe/Code: zeige nachvollziehbare, knappe Schritte. Code mit korrektem Fence (\`\`\`ts, \`\`\`bash etc.).
-4) Effektiv mitdenken: Liefere die Lösung + ggf. 1–2 sinnvolle Alternativen/Verbesserungen. Wo sinnvoll: kurze Checklisten/Beispiele.
-5) Halte dich an die Nutzersprache (Standard: Deutsch). Antworte prägnant, freundlich, professionell.
-6) Denke BEVOR du antwortest kurz über Absicht → Plan → finale Antwort nach. Erzeuge als Ausgabe nur die finale Antwort, nicht deine Notizen.
-7) Zielqualität: Antworten sollen dem Niveau von ChatGPT-4o / Gemini Pro entsprechen – tiefgründig, hilfreich, natürlich formuliert.
+1) **Wahrheit & Genauigkeit zuerst.** Keine erfundenen Fakten/Quellen. Wenn du etwas nicht weißt, sag „weiß ich nicht“ und schlage den nächsten sinnvollen Schritt vor.
+2) **Mehrwert & Kontext:** Liefere nicht nur Aufzählungen, sondern erkläre *warum* etwas wichtig ist und *wie* es praktisch umgesetzt werden kann.
+3) **Struktur & Stil:**
+   - Beginne mit einer **Kurzfassung** (2–4 Sätze).
+   - Nutze Markdown (H1–H3, Listen, **fett**, Tabellen wo sinnvoll).
+   - Nutze natürliche, lebendige Sprache statt Bulletpoint-Monotonie.
+   - Füge – wo passend – konkrete Beispiele, Formulierungsbeispiele oder kleine Vorlagen hinzu.
+4) **Denke intern in drei Schritten:** *Verstehen → Plan → Antwort*. Gib nur die finale Antwort aus, nicht deine Notizen.
+5) **Bei Logik/Mathe/Code:** Zeige nachvollziehbare Schritte; Code sauber mit korrektem Fence (\`\`\`ts, \`\`\`bash\`\`\`).
+6) **Stimme:** Freundlich, professionell, inspirierend – wie ein erfahrener Mentor oder Senior Consultant.
+7) **Zielniveau:** Liefere Antworten mit dem Tiefgang und Stil von ChatGPT-4o bzw. Gemini 2.5 Pro.
+8) **Abschluss:** Beende die Antwort mit einem Abschnitt **„Mein Vorschlag – Ultimatives Setup“**.
+   - Enthält 6–10 konkrete, umsetzbare Punkte (Checkliste/Angebotspaket).
+   - Schließe mit einer kurzen Frage/CTA, z. B. ob ein Content-Kalender, Templates oder nächste Schritte gewünscht sind.
 `.trim();
 
 /** ---------- Qualitäts-Defaults (zentral) ---------- */
 const OPENAI_GEN = {
-  temperature: 0.35,
+  temperature: 0.45,
   top_p: 0.9,
-  max_tokens: 8192,          // ggf. auf 4096/3072 senken, falls Modell-/Quota-Limits greifen
+  max_tokens: 12288,          // ggf. auf 8192/4096 senken, falls Limits greifen
   presence_penalty: 0.3,
   frequency_penalty: 0.25,
 } as const;
 
 const GEMINI_GEN = {
-  temperature: 0.35,
+  temperature: 0.45,
   topP: 0.9,
   topK: 64,
-  maxOutputTokens: 8192,      // ggf. reduzieren, falls Limits greifen
+  maxOutputTokens: 12288,     // ggf. reduzieren, falls Limits greifen
   // responseMimeType: 'text/markdown', // aktivieren, wenn in deiner Vertex-Version unterstützt
 } as const;
 
 /** ---------- Optional: 2. Pass zur Mini-Verfeinerung ---------- */
 const DO_REFINE = false;        // auf true setzen, wenn nach dem Stream eine kurze Politur gewünscht ist
-const REFINE_TRIGGER_LEN = 1200;
+const REFINE_TRIGGER_LEN = 1400;
 
 /** ---------- Hilfsfunktionen ---------- */
 const getId = (ctx: any) => {
@@ -120,6 +131,48 @@ async function fetchImageAsBase64Part(url: string): Promise<Part | null> {
   }
 }
 
+/** ---------- CTA-Templates & Helfer ---------- */
+function buildClosingProposal(userText: string): string {
+  const isArtMarketing = /acryl|kunst|künstler|malerei|instagram|pinterest|galerie|bilder|art|canvas/i.test(userText || '');
+  if (isArtMarketing) {
+    return `
+## Mein Vorschlag – „Ultimatives Setup“
+
+- **Branding-Kit:** Logo, Farbpalette, Typografie + 3 Feed-Layouts (Mockups).
+- **Instagram-Plan:** 4 Posts/Woche, tägliche Story, monatlich 1 Reel-Serie (Making-of).
+- **Content-Produktion:** 10–15 vorbereitete Fotos/Videos (Detailshots, Raum-Mockups, Timelapse).
+- **Shop/Checkout:** Einfacher Kauf-/Anfrage-Flow (Link in Bio, Kontaktformular, Newsletter-Opt-in).
+- **Hashtag & Zielgruppen-Research:** DE/EU, Interior & Kunst-Affinitäten, lokale Tags.
+- **Ads-Testlauf:** 50–150 € / 2–4 Wochen, 2 Creatives × 2 Zielgruppen, wöchentliches Tuning.
+- **Kooperation lokal:** Einrichtungsgeschäft/Galerie + QR-Flyer mit Mini-Portfolio.
+- **Social Proof:** Kundenfoto-Challenge + Testimonials-Kacheln.
+- **Reporting:** Wöchentlich 15 min: Reichweite, Saves, Anfragen, Sales-Funnel.
+
+**Soll ich dir direkt einen 4-Wochen-Content-Kalender mit Caption-Vorlagen (inkl. Emojis & CTA) erstellen?**`;
+  }
+  // Generisches, hochwertiges Closing
+  return `
+## Mein Vorschlag – „Ultimatives Setup“
+
+- **Zielbild definieren:** klare KPI (z. B. Anfragen/Woche, Conversion, Umsatz).
+- **Content-Backlog:** 10–15 hochwertige Assets (Texte, Visuals, Kurzvideos).
+- **Kanal-Fokus:** 1 Kernkanal + 1 Supportkanal (Workflows/Planung fix).
+- **Conversion-Strecke:** klare CTAs, reduzierte Reibung (Formulare, Checkout, Termine).
+- **Schnelltests:** 2–3 Hypothesen/Monat (A/B-Hooks, Creatives, Offers).
+- **Retargeting-Setup:** Interessenten erneut ansprechen (E-Mail/Ads).
+- **Proof-Layer:** Referenzen, Cases, Social Proof prominenter platzieren.
+- **Review-Ritual:** 1×/Woche 15 min: Metriken → Learnings → Anpassungen.
+
+**Soll ich das sofort in einen konkreten 30-Tage-Plan mit Aufgaben pro Woche übersetzen?**`;
+}
+
+function ensureClosingSection(text: string, userText: string): string {
+  const alreadyHas = /mein vorschlag|ultimatives setup|nächste schritte|next steps/i.test(text || '');
+  if (alreadyHas) return text;
+  const cta = buildClosingProposal(userText);
+  return `${text.trim()}\n\n${cta.trim()}\n`;
+}
+
 /** ---------- Route ---------- */
 export async function POST(req: Request, ctx: any) {
   try {
@@ -162,8 +215,18 @@ export async function POST(req: Request, ctx: any) {
             // ------------ OpenAI (GPT-4o/mini) ------------
             console.log(`🚀 [OpenAI Stream] Modell: ${chosen}`);
 
-            // Multimodal: Text + ggf. Bilder
-            const parts: any[] = [{ type: 'text', text: `${last.content ?? ''}\n\nBitte überarbeite deine eigene Antwort während des Schreibens: gliedere klar mit H1/H2/H3, streiche Dopplungen, füge wo sinnvoll kurze Checklisten/Beispiele hinzu.` }];
+            // Multimodal: Text + ggf. Bilder (+ In-Stream-Politurhinweis)
+            const parts: any[] = [{
+              type: 'text',
+              text: `${last.content ?? ''}
+
+Bitte überarbeite deine eigene Antwort während des Schreibens:
+- gliedere klar mit H1/H2/H3,
+- streiche Dopplungen,
+- füge – wo sinnvoll – kurze Checklisten/Beispiele hinzu,
+- nutze natürliche, lebendige Sprache statt Bulletpoint-Monotonie.
+- beende mit dem Abschnitt **„Mein Vorschlag – Ultimatives Setup“** (6–10 Punkte + kurze CTA-Frage).`,
+            }];
             for (const url of imageUrls) {
               if (/^https?:\/\//i.test(url)) {
                 parts.push({ type: 'image_url', image_url: { url } });
@@ -214,6 +277,7 @@ export async function POST(req: Request, ctx: any) {
 - bessere Struktur (H1/H2/H3), Dopplungen kürzen
 - klare Checklisten/Beispiele einbauen, wo sinnvoll
 - inhaltlich nichts Neues erfinden, Ton & Sprache beibehalten
+- stelle sicher, dass ein Abschluss „Mein Vorschlag – Ultimatives Setup“ mit 6–10 Punkten vorhanden ist + kurze CTA-Frage.
 
 --- ENTWURF ---
 ${assistantText}`,
@@ -247,9 +311,16 @@ ${assistantText}`,
               parts: [{ text: m.content ?? '' }],
             }));
 
-            // Userturn (Text + Bilder)
+            // Userturn (Text + ggf. Bilder + In-Stream-Politurhinweis)
             const userParts: Part[] = [{
-              text: `${last.content ?? ''}\n\nBitte überarbeite deine eigene Antwort während des Schreibens: gliedere klar mit H1/H2/H3, streiche Dopplungen, füge wo sinnvoll kurze Checklisten/Beispiele hinzu.`,
+              text: `${last.content ?? ''}
+
+Bitte überarbeite deine eigene Antwort während des Schreibens:
+- gliedere klar mit H1/H2/H3,
+- streiche Dopplungen,
+- füge – wo sinnvoll – kurze Checklisten/Beispiele hinzu,
+- nutze natürliche, lebendige Sprache statt Bulletpoint-Monotonie.
+- beende mit dem Abschnitt **„Mein Vorschlag – Ultimatives Setup“** (6–10 Punkte + kurze CTA-Frage).`,
             }];
             for (const url of imageUrls) {
               let imagePart: Part | null = null;
@@ -287,6 +358,7 @@ ${assistantText}`,
 - bessere Struktur (H1/H2/H3), Dopplungen kürzen
 - klare Checklisten/Beispiele einbauen, wo sinnvoll
 - inhaltlich nichts Neues erfinden, Ton & Sprache beibehalten
+- stelle sicher, dass ein Abschluss „Mein Vorschlag – Ultimatives Setup“ mit 6–10 Punkten vorhanden ist + kurze CTA-Frage.
 
 --- ENTWURF ---
 ${assistantText}`,
@@ -300,6 +372,14 @@ ${assistantText}`,
                 assistantText = refined;
               }
             }
+          }
+
+          // **Failsafe: Abschluss-Block anhängen, falls Modell ihn nicht geliefert hat**
+          const withClosing = ensureClosingSection(assistantText, last.content);
+          if (withClosing.length > assistantText.length) {
+            const append = withClosing.slice(assistantText.length);
+            send({ type: 'delta', text: append });
+            assistantText = withClosing;
           }
 
           // Antwort speichern
