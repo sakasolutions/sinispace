@@ -9,9 +9,9 @@ import { signOut } from 'next-auth/react';
 
 // --- IMPORTS FÜR SYNTAX HIGHLIGHTING ---
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+// --- ÄNDERUNG: Wir nutzen ein helles Theme für Code ---
+import { oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-// GEÄNDERT: 'gemini-2.5-pro' hinzugefügt
 type Role = 'user' | 'assistant' | 'system';
 type Model = 'gpt-4o' | 'gpt-4o-mini' | 'gemini-2.5-pro';
 
@@ -22,7 +22,7 @@ type Chat = {
   createdAt: string;
 };
 
-// ... (Restliche Typen und Hilfsfunktionen bleiben unverändert) ...
+// ... (Alle Typen und API-Funktionen bleiben 1:1 gleich) ...
 type Message = {
   id: string;
   chatId: string;
@@ -48,7 +48,7 @@ function joinTitle(project: string | null, name: string) {
   const cleanName = name.trim() || 'Neuer Chat';
   return project ? `${project.trim()} / ${cleanName}` : cleanName;
 }
-// ===== API Funktionen (bleiben unverändert) =====
+// ===== API Funktionen (bleiben 1:1 gleich) =====
 async function apiCreateChat(model: Model): Promise<Chat> {
   const r = await fetch('/api/chats', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ model }) });
   if (!r.ok) throw new Error(`Chat anlegen fehlgeschlagen (${r.status})`);
@@ -134,7 +134,7 @@ export default function ChatPage() {
   }, [chats]);
   const [projectFilter, setProjectFilter] = useState<string | 'ALL'>('ALL');
 
-  // ... (Hooks unverändert) ...
+  // ... (Alle Hooks bleiben 1:1 gleich) ...
   useEffect(() => {
     (async () => {
       try {
@@ -319,12 +319,14 @@ export default function ChatPage() {
 
   // ===== Render =====
   return (
-    <div className="relative isolate h-[100dvh] overflow-hidden bg-[radial-gradient(80%_60%_at_50%_-10%,rgba(99,102,241,0.15),transparent),linear-gradient(180deg,#0b1120_0%,#0b1120_50%,#0e1322_100%)] text-white">
-      {/* Header (unverändert) */}
-      <header className="h-12 sm:h-14 sticky top-0 z-20 backdrop-blur supports-[backdrop-filter]:bg-white/5 bg-white/0 border-b border-white/10">
+    // --- ÄNDERUNG: Hintergrund ist jetzt ein sehr helles Grau (Rahmen) ---
+    <div className="relative isolate h-[100dvh] overflow-hidden bg-neutral-50 text-neutral-900">
+      
+      {/* --- ÄNDERUNG: Header ist jetzt weiß mit Schatten --- */}
+      <header className="h-12 sm:h-14 sticky top-0 z-20 backdrop-blur supports-[backdrop-filter]:bg-white/80 bg-white/80 border-b border-neutral-200 shadow-sm">
         <div className="mx-auto max-w-7xl h-full px-3 sm:px-6 flex items-center gap-2">
           <button
-            className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-lg border border-white/15 hover:bg-white/10"
+            className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 hover:bg-neutral-100"
             aria-label="Menü"
             onClick={() => setSidebarOpen(true)}
           >
@@ -333,14 +335,14 @@ export default function ChatPage() {
             </svg>
           </button>
           <div className="flex items-center gap-2 min-w-0">
-            <div className="h-5 w-5 shrink-0 rounded bg-white/90" />
+            <div className="h-5 w-5 shrink-0 rounded bg-neutral-900" />
             <span className="text-sm font-semibold tracking-wide truncate">SiniSpace</span>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            {/* Abmelden */}
+            {/* Abmelden (Knopf-Stil angepasst) */}
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
-              className="inline-flex items-center justify-center sm:justify-start rounded-lg border border-red-400/30 bg-red-500/10 text-sm hover:bg-red-500/20 text-red-300 h-8 w-8 sm:w-auto sm:px-3 sm:py-1.5"
+              className="inline-flex items-center justify-center sm:justify-start rounded-lg border border-red-300 bg-red-50 text-sm hover:bg-red-100 text-red-700 h-8 w-8 sm:w-auto sm:px-3 sm:py-1.5"
               title="Abmelden"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4">
@@ -349,10 +351,10 @@ export default function ChatPage() {
               <span className="hidden sm:inline sm:ml-1.5">Abmelden</span>
             </button>
 
-            {/* Settings */}
+            {/* Settings (Knopf-Stil angepasst) */}
             <Link
               href="/settings"
-              className="inline-flex items-center justify-center sm:justify-start rounded-lg border border-white/15 bg-white/5 text-sm hover:bg-white/10 h-8 w-8 sm:w-auto sm:px-3 sm:py-1.5"
+              className="inline-flex items-center justify-center sm:justify-start rounded-lg border border-neutral-300 bg-white text-sm hover:bg-neutral-100 h-8 w-8 sm:w-auto sm:px-3 sm:py-1.5"
               title="Einstellungen"
             >
               <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4">
@@ -360,9 +362,9 @@ export default function ChatPage() {
               </svg>
               <span className="hidden sm:inline sm:ml-1.5">Einstellungen</span>
             </Link>
-
+            
             <select
-              className="max-w-[44vw] sm:max-w-none text-xs sm:text-sm rounded-lg border border-white/15 bg-white/5 px-2 py-1.5 outline-none hover:bg-white/10 truncate"
+              className="max-w-[44vw] sm:max-w-none text-xs sm:text-sm rounded-lg border border-neutral-300 bg-white px-2 py-1.5 outline-none hover:bg-neutral-100 truncate"
               value={activeChat?.model ?? 'gpt-4o'}
               onChange={(e) => patchChatModel(e.target.value as Model)}
               aria-label="KI-Modell wählen"
@@ -374,13 +376,13 @@ export default function ChatPage() {
             </select>
 
             {isStreaming ? (
-              <button onClick={handleStop} className="rounded-lg border border-white/15 bg-white/5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm hover:bg-white/10">
+              <button onClick={handleStop} className="rounded-lg border border-neutral-300 bg-white px-2 sm:px-3 py-1.5 text-xs sm:text-sm hover:bg-neutral-100">
                 Stop
               </button>
             ) : (
               <button
                 onClick={handleRegenerateLast}
-                className="rounded-lg border border-white/15 bg-white/5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm hover:bg-white/10 disabled:opacity-40"
+                className="rounded-lg border border-neutral-300 bg-white px-2 sm:px-3 py-1.5 text-xs sm:text-sm hover:bg-neutral-100 disabled:opacity-40"
                 disabled={!activeChat || (messagesByChat[activeChat?.id ?? ''] ?? []).length === 0}
                 title="Letzte Antwort neu generieren"
               >
@@ -389,7 +391,7 @@ export default function ChatPage() {
             )}
             <button
               onClick={() => handleNewChat()}
-              className="hidden sm:inline-flex items-center gap-1 rounded-lg bg-white text-black px-3 py-1.5 text-sm font-medium hover:opacity-90"
+              className="hidden sm:inline-flex items-center gap-1 rounded-lg bg-neutral-900 text-white px-3 py-1.5 text-sm font-medium hover:opacity-90"
             >
               + Neuer Chat
             </button>
@@ -399,18 +401,19 @@ export default function ChatPage() {
 
       {/* Body */}
       <div className="mx-auto max-w-7xl h-[calc(100dvh-3rem)] sm:h-[calc(100dvh-3.5rem)] grid grid-cols-1 lg:grid-cols-[300px_1fr]">
-        {/* Sidebar (unverändert) */}
-        <aside className="hidden lg:flex h-full border-r border-white/10 flex-col overflow-hidden">
-          <div className="p-3 flex items-center gap-2 border-b border-white/10">
+        
+        {/* --- ÄNDERUNG: Sidebar hat jetzt hellgrauen Hintergrund für Trennung --- */}
+        <aside className="hidden lg:flex h-full border-r border-neutral-200 flex-col overflow-hidden bg-neutral-100">
+          <div className="p-3 flex items-center gap-2 border-b border-neutral-200">
             <button
               onClick={() => handleNewChat()}
-              className="px-2 py-1 rounded-md text-sm border border-white/15 bg-white/5 hover:bg-white/10"
+              className="px-2 py-1 rounded-md text-sm border border-neutral-300 bg-white hover:bg-neutral-200"
               aria-label="Neuen Chat erstellen"
             >
               + Neu
             </button>
             <select
-              className="ml-auto text-xs rounded-md border border-white/15 bg-white/5 px-2 py-1 hover:bg-white/10"
+              className="ml-auto text-xs rounded-md border border-neutral-300 bg-white px-2 py-1 hover:bg-neutral-200"
               value={projectFilter}
               onChange={(e) => setProjectFilter(e.target.value as any)}
               title="Nach Projekt filtern"
@@ -431,7 +434,7 @@ export default function ChatPage() {
             />
           </div>
           {usage && (
-            <div className="p-3 border-t border-white/10 text-[11px] text-white/70 shrink-0">
+            <div className="p-3 border-t border-neutral-200 text-[11px] text-neutral-600 shrink-0">
               {usage.inputTokens ? `In: ${usage.inputTokens} • ` : ''}
               {usage.outputTokens ? `Out: ${usage.outputTokens} • ` : ''}
               {usage.costUsd ? `Kosten: $${usage.costUsd.toFixed(4)}` : ''}
@@ -439,25 +442,25 @@ export default function ChatPage() {
           )}
         </aside>
 
-        {/* Mobile Sidebar (unverändert) */}
+        {/* --- ÄNDERUNG: Mobile Sidebar auch hellgrau --- */}
         {sidebarOpen && (
           <div className="lg:hidden fixed inset-0 z-30">
             <div className="absolute inset-0 bg-black/60" onClick={() => setSidebarOpen(false)} aria-hidden />
-            <aside className="absolute left-0 top-0 h-full w-[88vw] max-w-[340px] bg-[#0b1120] border-r border-white/10 flex flex-col">
-              <div className="p-3 flex items-center justify-between border-b border-white/10">
-                <h2 className="text-xs uppercase tracking-wider text-white/70">Deine Chats</h2>
-                <button onClick={() => setSidebarOpen(false)} className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-white/15 hover:bg-white/10" aria-label="Schließen">
+            <aside className="absolute left-0 top-0 h-full w-[88vw] max-w-[340px] bg-neutral-100 border-r border-neutral-200 flex flex-col">
+              <div className="p-3 flex items-center justify-between border-b border-neutral-200">
+                <h2 className="text-xs uppercase tracking-wider text-neutral-600">Deine Chats</h2>
+                <button onClick={() => setSidebarOpen(false)} className="h-8 w-8 inline-flex items-center justify-center rounded-md border border-neutral-300 hover:bg-neutral-200" aria-label="Schließen">
                   <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
               <div className="p-3 flex items-center gap-2">
-                <button onClick={() => { setSidebarOpen(false); handleNewChat(); }} className="w-full rounded-lg bg-white text-black px-3 py-2 text-sm font-medium hover:opacity-90">+ Neuer Chat</button>
+                <button onClick={() => { setSidebarOpen(false); handleNewChat(); }} className="w-full rounded-lg bg-neutral-900 text-white px-3 py-2 text-sm font-medium hover:opacity-90">+ Neuer Chat</button>
               </div>
               <div className="px-3 pb-2">
                 <select
-                  className="w-full text-xs rounded-md border border-white/15 bg-white/5 px-2 py-1 hover:bg-white/10"
+                  className="w-full text-xs rounded-md border border-neutral-300 bg-white px-2 py-1 hover:bg-neutral-100"
                   value={projectFilter}
                   onChange={(e) => setProjectFilter(e.target.value as any)}
                 >
@@ -480,16 +483,17 @@ export default function ChatPage() {
           </div>
         )}
 
-        {/* Chat Area (unverändert bis auf MessageBubble) */}
-        <section className="h-full flex flex-col overflow-hidden">
+        {/* --- ÄNDERUNG: Chat Area ist jetzt weiß (für Kontrast zur Sidebar) --- */}
+        <section className="h-full flex flex-col overflow-hidden bg-white">
           <div className="px-3 sm:px-6 pt-3 shrink-0">
-            <div className="text-[11px] sm:text-xs text-white/80 bg-yellow-500/10 border border-yellow-400/30 rounded-lg p-2">
+            <div className="text-xs text-yellow-900 bg-yellow-400/20 border border-yellow-400/30 rounded-lg p-2">
               KI kann Fehler machen. Inhalte prüfen – besonders bei rechtlichen/medizinischen/finanziellen Themen.
             </div>
-            {error && <div className="mt-2 text-sm text-red-200 bg-red-500/10 border border-red-400/30 rounded-lg p-2">{error}</div>}
+            {error && <div className="mt-2 text-sm text-red-900 bg-red-500/10 border border-red-400/30 rounded-lg p-2">{error}</div>}
           </div>
 
           <div ref={listRef} className="flex-1 overflow-auto px-3 sm:px-6 py-4 overscroll-contain scroll-smooth">
+            {/* --- ÄNDERUNG: Lesebreite hier gesetzt --- */}
             <div className="mx-auto w-full md:max-w-3xl space-y-3 sm:space-y-4">
               {activeMessages.map((m, i) => {
                 const prev = activeMessages[i - 1]; const grouped = !!(prev && prev.role === m.role);
@@ -507,19 +511,20 @@ export default function ChatPage() {
             </div>
           </div>
 
-          {/* Composer (unverändert) */}
+          {/* Composer (Farben angepasst) */}
           <div className="sticky bottom-0 z-10 px-3 sm:px-6 pb-3 shrink-0" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
-            <div className="mx-auto w-full md:max-w-3xl rounded-2xl border border-white/15 bg-white/5 backdrop-blur p-2 shadow-[0_10px_30px_-10px_rgba(0,0,0,0.6)]">
+            {/* --- ÄNDERUNG: Stärkerer Schatten, solider Hintergrund --- */}
+            <div className="mx-auto w-full md:max-w-3xl rounded-2xl border border-neutral-300 bg-white p-2 shadow-xl shadow-neutral-400/20">
               <div className="flex items-end gap-2">
                 <button
                   onClick={handlePickFile}
-                  className="h-10 w-10 flex items-center justify-center rounded-xl border border-white/15 bg-white/5 hover:bg-white/10 text-sm disabled:opacity-50"
+                  className="h-10 w-10 flex items-center justify-center rounded-xl border border-neutral-300 bg-white hover:bg-neutral-100 text-sm disabled:opacity-50"
                   title={uploading ? 'Lade hoch…' : 'Datei anhängen'}
                   aria-label="Datei anhängen"
                   disabled={!activeChat || uploading || isStreaming}
                 >
                   {uploading ? (
-                    <svg className="animate-spin h-5 w-5 text-white/70" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <svg className="animate-spin h-5 w-5 text-neutral-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                       <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                     </svg>
@@ -531,10 +536,11 @@ export default function ChatPage() {
                 </button>
                 <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt" className="hidden" onChange={handleFileChange} />
                 <textarea
-                  className="flex-1 min-h-10 max-h-40 h-10 resize-y rounded-xl border border-white/15 bg-transparent p-2 text-sm placeholder:text-white/40 focus:outline-none break-words"
+                  className="flex-1 min-h-10 max-h-40 h-10 resize-y rounded-xl border border-neutral-300 bg-white p-2 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 break-words"
                   placeholder={activeChat ? 'Nachricht an die KI …' : 'Erst einen Chat erstellen'}
                   value={draft}
                   onChange={(e) => setActiveDraft(e.target.value)}
+                  // HIER WAR DER FEHLER: 'SiftKey' statt 'shiftKey'
                   onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
                   disabled={!activeChat || isStreaming}
                   aria-label="Nachricht schreiben"
@@ -542,15 +548,15 @@ export default function ChatPage() {
                 <button
                   onClick={handleSend}
                   disabled={!activeChat || !draft.trim() || isStreaming}
-                  className={cls('h-10 px-4 rounded-xl text-sm font-medium bg-white text-black', (!!activeChat && !!draft.trim() && !isStreaming) ? 'hover:opacity-90' : 'opacity-40 cursor-not-allowed')}
+                  className={cls('h-10 px-4 rounded-xl text-sm font-medium bg-neutral-900 text-white', (!!activeChat && !!draft.trim() && !isStreaming) ? 'hover:opacity-90' : 'opacity-40 cursor-not-allowed')}
                 >
                   {isStreaming ? 'Senden…' : 'Senden'}
                 </button>
               </div>
-              <div className="mt-1 flex flex-wrap items-center gap-2 justify-between text-[11px] text-white/60 px-1">
+              <div className="mt-1 flex flex-wrap items-center gap-2 justify-between text-[11px] text-neutral-500 px-1">
                 <div>Enter = senden • Shift+Enter = Zeilenumbruch</div>
                 {usage && (
-                  <div className="hidden sm:block rounded-full border border-white/15 bg-white/5 px-2 py-0.5">
+                  <div className="hidden sm:block rounded-full border border-neutral-300 bg-white px-2 py-0.5">
                     {usage.inputTokens ? `In: ${usage.inputTokens} • ` : ''}
                     {usage.outputTokens ? `Out: ${usage.outputTokens} • ` : ''}
                     {usage.costUsd ? `Kosten: $${usage.costUsd.toFixed(4)}` : ''}
@@ -565,7 +571,7 @@ export default function ChatPage() {
   );
 }
 
-// ===== Sub-Komponenten (SidebarChatList unverändert) =====
+// ===== Sub-Komponenten (SidebarChatList Farben angepasst) =====
 function SidebarChatList({
   chats, activeChatId, onSelect, onDelete, onRename, onMoveProject, projectFilter,
 }: {
@@ -598,20 +604,22 @@ function SidebarChatList({
     <div className="px-2 pb-4 space-y-4">
       {grouped.map(([group, items]) => (
         <div key={group}>
-          <div className="px-2 py-2 text-[11px] uppercase tracking-wider text-white/50 flex items-center justify-between">
+          {/* --- ÄNDERUNG: Sidebar Textfarbe --- */}
+          <div className="px-2 py-2 text-[11px] uppercase tracking-wider text-neutral-500 flex items-center justify-between">
             <span>{group === '—' ? 'Ohne Projekt' : group}</span>
           </div>
           <ul className="space-y-1">
             {items.map((c) => {
               const isActive = activeChatId === c.id;
               return (
-                <li key={c.id} className={cls('rounded-lg border border-transparent hover:border-white/10')}>
-                  <div className={cls('flex items-center gap-1 px-2 py-1.5 rounded-lg', isActive && 'bg-white/10')}>
+                <li key={c.id} className={cls('rounded-lg border border-transparent hover:border-neutral-200')}>
+                  {/* --- ÄNDERUNG: Aktiver Chat-Button --- */}
+                  <div className={cls('flex items-center gap-1 px-2 py-1.5 rounded-lg', isActive && 'bg-white')}>
                     {editingId === c.id ? (
                       <input
                         ref={inputRef}
                         defaultValue={c._name}
-                        className="flex-1 bg-transparent outline-none text-sm px-2 py-1 rounded-md border border-white/20"
+                        className="flex-1 bg-white outline-none text-sm px-2 py-1 rounded-md border border-neutral-300 ring-1 ring-indigo-500"
                         onKeyDown={async (e) => {
                           if (e.key === 'Enter') {
                             const val = (e.target as HTMLInputElement).value;
@@ -630,12 +638,13 @@ function SidebarChatList({
                         title={c._name}
                       >
                         <div className="text-sm font-medium truncate">{c._name}</div>
-                        <div className="text-[11px] text-white/60">{c.model}</div>
+                        <div className="text-[11px] text-neutral-500">{c.model}</div>
                       </button>
                     )}
+                    {/* --- ÄNDERUNG: Sidebar Icons --- */}
                     <button
                       onClick={() => setEditingId(prev => prev === c.id ? null : c.id)}
-                      className="h-7 w-7 flex-shrink-0 inline-flex items-center justify-center rounded-md border border-transparent text-white/60 hover:text-white hover:border-white/15"
+                      className="h-7 w-7 flex-shrink-0 inline-flex items-center justify-center rounded-md border border-transparent text-neutral-500 hover:text-neutral-900 hover:border-neutral-300 hover:bg-white"
                       title="Umbenennen"
                       aria-label="Umbenennen"
                     >
@@ -645,17 +654,17 @@ function SidebarChatList({
                     </button>
                     <button
                       onClick={() => onMoveProject(c.id, prompt('In welches Projekt verschieben? (leer = ohne Projekt)')?.trim() || null)}
-                      className="h-7 w-7 flex-shrink-0 inline-flex items-center justify-center rounded-md border border-transparent text-white/60 hover:text-white hover:border-white/15"
+                      className="h-7 w-7 flex-shrink-0 inline-flex items-center justify-center rounded-md border border-transparent text-neutral-500 hover:text-neutral-900 hover:border-neutral-300 hover:bg-white"
                       title="Projekt ändern"
                       aria-label="Projekt ändern"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.188l.003.174a2.25 2.25 0 0 0 1.883 2.188c.112.017.227.026.344.026h15.812c.117 0 .232-.009.344-.026a2.25 2.25 0 0 0 1.883-2.188l-.003-.174a2.25 2.25 0 0 0-1.883-2.188m-16.5 0c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m0 0C21.66 9.713 22.5 8.288 22.5 6.75c0-1.538-.84-2.963-2.094-3.69M3.75 9.776c.112-.017.227-.026.344-.026M3.75 9.776c-.112.017-.227.026-.344.026C2.34 9.713 1.5 8.288 1.5 6.75c0-1.538.84-2.963 2.094-3.69m0 0C2.34 3.037 3.75 3 5.25 3h13.5c1.5 0 2.91.037 3.906.31" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.188l.003.174a2.25 2.25 0 0 0 1.883 2.188c.112.017.227.026.344.026h15.812c.117 0 .232-.009.344-.026a2.25 2.25 0 0 0 1.883-2.188l-.003-.174a2.25 2.25 0 0 0-1.883-2.188m-16.5 0c.112-.017.227-.026.344-.026h15.812c.117 0 .232-.009.344-.026m0 0C21.66 9.713 22.5 8.288 22.5 6.75c0-1.538-.84-2.963-2.094-3.69M3.75 9.776c.112-.017.227-.026.344-.026M3.75 9.776c-.112.017-.227.026-.344-.026C2.34 9.713 1.5 8.288 1.5 6.75c0-1.538.84-2.963 2.094-3.69m0 0C2.34 3.037 3.75 3 5.25 3h13.5c1.5 0 2.91.037 3.906.31" />
                       </svg>
                     </button>
                     <button
                       onClick={() => onDelete(c.id)}
-                      className="h-7 w-7 flex-shrink-0 inline-flex items-center justify-center rounded-md border border-transparent text-white/60 hover:text-white hover:border-white/15"
+                      className="h-7 w-7 flex-shrink-0 inline-flex items-center justify-center rounded-md border border-transparent text-neutral-500 hover:text-neutral-900 hover:border-neutral-300 hover:bg-white"
                       title="Löschen"
                       aria-label="Löschen"
                     >
@@ -671,13 +680,13 @@ function SidebarChatList({
         </div>
       ))}
       {grouped.length === 0 && (
-        <div className="px-3 py-2 text-sm text-white/60">Keine Chats</div>
+        <div className="px-3 py-2 text-sm text-neutral-500">Keine Chats</div>
       )}
     </div>
   );
 }
 
-// ===== Sub-Komponente: MessageBubble (GEÄNDERT für Layout) =====
+// ===== Sub-Komponente: MessageBubble (STARK GEÄNDERT für "Profi-Fokus") =====
 function MessageBubble({
   message, onCopy, onEdit, isStreaming, grouped,
 }: {
@@ -687,17 +696,18 @@ function MessageBubble({
 
   // Komponenten für Markdown (Syntax Highlighting etc.)
   const components = {
-    // PRE: Eigene Hülle ohne zusätzliches Padding (Prose-Pre ist neutralisiert)
     pre: (props: React.HTMLAttributes<HTMLPreElement>) => (
       <pre
         {...props}
         className={cls(
-          'my-3 rounded-lg border border-white/10 bg-black/30 p-0',
+          // --- ÄNDERUNG: Code-Block-Hintergrund für helles/dunkles Theme ---
+          isUser
+            ? 'my-3 rounded-lg border border-indigo-400/50 bg-black/20 p-0' // Dunkel auf blauer Bubble
+            : 'my-3 rounded-lg border border-neutral-200 bg-neutral-100 p-0', // Hell auf grauer Bubble
           'whitespace-pre-wrap break-words overflow-auto max-w-full'
         )}
       />
     ),
-    // CODE: Inline vs Block trennen; Blöcke via SyntaxHighlighter
     code: ({ inline, className, children, ...rest }: any) => {
       if (inline) {
         return (
@@ -705,7 +715,10 @@ function MessageBubble({
             {...rest}
             className={cls(
               className,
-              'rounded-md border border-white/15 bg-black/30 px-1.5 py-[2px] text-[0.85em] break-words'
+              // --- ÄNDERUNG: Inline-Code-Styling ---
+              isUser
+                ? 'rounded border border-indigo-300/50 bg-black/20 px-1 py-0.5 text-[0.85em] break-words font-normal'
+                : 'rounded border border-neutral-200 bg-neutral-100 px-1 py-0.5 text-[0.85em] break-words font-normal'
             )}
           >
             {children}
@@ -717,75 +730,85 @@ function MessageBubble({
       return (
         <SyntaxHighlighter
           {...rest}
-          style={vscDarkPlus}
+          // --- ÄNDERUNG: Helles Syntax-Theme ---
+          style={oneLight}
           language={lang}
           PreTag="div"
-          className="my-3 rounded-lg border border-white/10 bg-[#1E1E1E] p-3 text-xs leading-relaxed whitespace-pre-wrap break-words overflow-auto max-w-full"
+          // --- ÄNDERUNG: Heller Code-Block-Stil ---
+          className="my-3 rounded-lg border border-neutral-200 bg-neutral-50 p-3 text-xs leading-relaxed whitespace-pre-wrap break-words overflow-auto max-w-full"
         >
           {String(children).replace(/\n$/, '')}
         </SyntaxHighlighter>
       );
     },
-    // Links
     a: (props: any) => <a {...props} className="underline break-words" />,
-    // Tabellen optional in Wrapper, aber ohne p/li-Overrides (Typography soll greifen)
     table: (props: any) => (
-      <div className="max-w-full overflow-auto">
+      <div className="max-w-full overflow-auto my-3 border border-neutral-300 rounded-lg">
         <table {...props} className="w-full text-left border-collapse" />
       </div>
     ),
+    thead: (props: any) => <thead {...props} className="bg-neutral-100" />,
+    th: (props: any) => <th {...props} className="p-2 border-b border-neutral-300" />,
+    td: (props: any) => <td {...props} className="p-2 border-b border-neutral-300" />,
   };
 
   return (
-    <div className={cls('w-full', isUser ? 'flex justify-end' : 'flex justify-start')}>
-      {/* --- HIER IST DIE ÄNDERUNG --- */}
-      {/* Wendet max-w nur auf User an */}
-      <div className={cls(
-          'group',
-          isUser ? 'max-w-[92%] sm:max-w-[80%] md:max-w-[70%]' : 'w-full' // <-- Assistant nimmt volle Breite
-        )}>
-        {/* --- ENDE DER ÄNDERUNG --- */}
-
-        {/* Header (Label & Buttons) bleibt für beide gleich */}
+    <div className={cls('w-full flex', isUser ? 'justify-end' : 'justify-start')}>
+      
+      {/* --- ÄNDERUNG: Wrapper für den Inhalt ---
+          Steuert die *maximale Breite* der Bubbles.
+          Beide sind jetzt auf 90% Breite begrenzt, um nicht "billig" zu wirken.
+      */}
+      <div className={cls('group', 'max-w-[90%]')}>
+        
+        {/* Header (Label & Buttons) */}
         {!grouped && (
-          <div className={cls('mb-1 px-1 flex items-center gap-2', isUser ? 'justify-end' : 'justify-start')}>
-            <div className="text-[11px] font-medium text-white/70">{isUser ? 'Du' : 'Assistant'}</div>
+          <div className={cls('mb-1.5 px-1 flex items-center gap-2', isUser ? 'justify-end' : 'justify-start')}>
+            <div className="text-[11px] font-medium text-neutral-600">{isUser ? 'Du' : 'Assistant'}</div>
             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
-              {onEdit && <button onClick={onEdit} className="text-[11px] underline text-white/70 hover:text-white">Bearbeiten</button>}
-              <button onClick={onCopy} className="text-[11px] underline text-white/70 hover:text-white">Kopieren</button>
+              {onEdit && <button onClick={onEdit} className="text-[11px] underline text-neutral-600 hover:text-neutral-900">Bearbeiten</button>}
+              <button onClick={onCopy} className="text-[11px] underline text-neutral-600 hover:text-neutral-900">Kopieren</button>
             </div>
           </div>
         )}
 
-        {/* Bedingte Bubble: Nur für User oder wenn keine Prose-Klasse vorhanden wäre (Fallback) */}
+        {/* --- ÄNDERUNG: Bubble-Styling --- */}
         {isUser ? (
-          // USER: Bekommt die volle Bubble-Styling
-          <div className={cls('rounded-2xl px-4 py-3 border break-words', 'bg-blue-500/15 border-blue-400/30')}>
-            <div className="prose prose-sm sm:prose-base prose-invert max-w-none">
+          // USER: Bekommt eine kräftige, blaue Akzent-Bubble
+          <div className={cls('rounded-2xl px-3.5 py-2.5 break-words', 'bg-indigo-600 text-white')}>
+            {/* --- ÄNDERUNG: prose-invert für weißen Text auf dunkler Bubble --- */}
+            <div className="prose prose-sm sm:prose-base prose-invert max-w-none prose-code:font-normal">
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
                 {message.content || (isStreaming ? '▍' : '')}
               </ReactMarkdown>
             </div>
           </div>
         ) : (
-          // ASSISTANT: Bekommt KEINE Bubble, nur die Prose-Klassen für Layout
+          // ASSISTANT: Bekommt eine saubere, hellgraue Bubble
           <div
-            className={cls(
-              'prose prose-sm sm:prose-base prose-invert max-w-none', // Nur Typografie, kein Hintergrund/Border
-              'prose-headings:font-semibold prose-h1:text-xl prose-h2:text-lg prose-h3:text-base',
-              'prose-p:leading-relaxed prose-a:underline',
-              'prose-strong:text-white',
-              'prose-blockquote:border-l prose-blockquote:border-white/20 prose-blockquote:pl-4',
-              'prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5',
-              'prose-img:rounded-lg',
-              // Style Code-Blöcke und Inline-Code konsistent (wird vom SyntaxHighlighter/Markdown-Komponenten übernommen)
-              'prose-code:bg-black/30 prose-code:border prose-code:border-white/15 prose-code:rounded-md prose-code:px-1 prose-code:py-0.5 prose-code:text-[0.85em]',
-              'prose-pre:bg-transparent prose-pre:p-0' // Neutralisiert Prose-Pre-Styling, SyntaxHighlighter übernimmt
-            )}
+            className={cls('rounded-2xl px-3.5 py-2.5 break-words', 'bg-neutral-100 border border-neutral-200')}
           >
-            <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
-              {message.content || (isStreaming ? '▍' : '')}
-            </ReactMarkdown>
+            {/* --- ÄNDERUNG: WICHTIG! max-w-none entfernt! ---
+                'prose' allein begrenzt die Lesebreite auf 65ch (ca. 65 Zeichen).
+                DAS ist der Hauptgrund, warum es "professioneller" aussieht.
+            */}
+            <div
+              className={cls(
+                'prose prose-sm sm:prose-base prose-neutral', // KEIN max-w-none
+                'prose-headings:font-semibold prose-h1:text-xl prose-h2:text-lg prose-h3:text-base',
+                'prose-p:leading-relaxed prose-a:underline',
+                'prose-strong:text-neutral-900',
+                'prose-blockquote:border-l prose-blockquote:border-neutral-300 prose-blockquote:pl-4',
+                'prose-ul:my-2 prose-ol:my-2 prose-li:my-0.5',
+                'prose-img:rounded-lg',
+                'prose-code:font-normal', // stellt sicher, dass code nicht fett ist
+                'prose-pre:bg-transparent prose-pre:p-0' // Neutralisiert Prose-Pre-Styling
+              )}
+            >
+              <ReactMarkdown remarkPlugins={[remarkGfm]} components={components}>
+                {message.content || (isStreaming ? '▍' : '')}
+              </ReactMarkdown>
+            </div>
           </div>
         )}
       </div>
