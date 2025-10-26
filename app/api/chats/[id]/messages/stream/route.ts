@@ -25,7 +25,7 @@ PRINZIPIEN:
 2) **Mehrwert & Kontext:** Liefere nicht nur Aufzählungen, sondern erkläre *warum* etwas wichtig ist und *wie* es praktisch umgesetzt werden kann.
 3) **Struktur & Stil:**
    - Beginne mit einer **Kurzfassung** (2–4 Sätze).
-   - Nutze Markdown (H1–H3, Listen, **fett**, Tabellen wo sinnvoll).
+   - Nutze Markdown (Überschriften mit #, ##, ###, Listen, **fett**, Tabellen wo sinnvoll). // KORRIGIERT
    - Nutze natürliche, lebendige Sprache statt Bulletpoint-Monotonie.
    - Füge – wo passend – konkrete Beispiele, Formulierungsbeispiele oder kleine Vorlagen hinzu.
 4) **Denke intern in drei Schritten:** *Verstehen → Plan → Antwort*. Gib nur die finale Antwort aus, nicht deine Notizen.
@@ -35,7 +35,7 @@ PRINZIPIEN:
 8) **Abschluss (Situativ):** **NUR WENN** der Nutzer nach einem Plan, einer Strategie oder professionellem Rat fragt (z. B. Business, Marketing, Content-Planung), beende die Antwort mit einem Abschnitt **„Mein Vorschlag – Ultimatives Setup“**.
    - Bei informellen oder kreativen Anfragen (z. B. Witze, Gedichte, allgemeine Fragen) lasse diesen Abschnitt weg und schließe natürlich.
    - Wenn du den Setup-Abschnitt nutzt: 6–10 konkrete Punkte + kurze CTA-Frage.
-`.trim(); // GEÄNDERT: Punkt 8 ist jetzt situativ.
+`.trim();
 
 /** ---------- Qualitäts-Defaults (zentral) ---------- */
 const OPENAI_GEN = {
@@ -249,11 +249,11 @@ export async function POST(req: Request, ctx: any) {
               text: `${last.content ?? ''}
 
 Bitte überarbeite deine eigene Antwort während des Schreibens:
-- gliedere klar mit H1/H2/H3,
+- gliedere klar mit Markdown-Überschriften (#, ##, ###), // KORRIGIERT
 - streiche Dopplungen,
 - füge – wo sinnvoll – kurze Checklisten/Beispiele hinzu,
 - nutze natürliche, lebendige Sprache statt Bulletpoint-Monotonie.
-- **Falls angebracht** (bei Business-/Strategiefragen), beende mit dem Abschnitt **„Mein Vorschlag – Ultimatives Setup“** (6–10 Punkte + kurze CTA-Frage).`, // GEÄNDERT
+- **Falls angebracht** (bei Business-/Strategiefragen), beende mit dem Abschnitt **„Mein Vorschlag – Ultimatives Setup“** (6–10 Punkte + kurze CTA-Frage).`,
             }];
             for (const url of imageUrls) {
               if (/^https?:\/\//i.test(url)) {
@@ -302,13 +302,13 @@ Bitte überarbeite deine eigene Antwort während des Schreibens:
                     role: 'user',
                     content:
 `Überarbeite den folgenden Entwurf minimal:
-- bessere Struktur (H1/H2/H3), Dopplungen kürzen
+- bessere Struktur (mit #, ##, ### Überschriften), Dopplungen kürzen // KORRIGIERT
 - klare Checklisten/Beispiele einbauen, wo sinnvoll
 - inhaltlich nichts Neues erfinden, Ton & Sprache beibehalten
 - stelle sicher, dass **falls es ein Business-Thema ist**, ein Abschluss „Mein Vorschlag – Ultimatives Setup“ mit 6–10 Punkten vorhanden ist + kurze CTA-Frage.
 
 --- ENTWURF ---
-${assistantText}`, // GEÄNDERT
+${assistantText}`,
                   },
                 ],
               });
@@ -344,11 +344,11 @@ ${assistantText}`, // GEÄNDERT
               text: `${last.content ?? ''}
 
 Bitte überarbeite deine eigene Antwort während des Schreibens:
-- gliedere klar mit H1/H2/H3,
+- gliedere klar mit Markdown-Überschriften (#, ##, ###), // KORRIGIERT
 - streiche Dopplungen,
 - füge – wo sinnvoll – kurze Checklisten/Beispiele hinzu,
 - nutze natürliche, lebendige Sprache statt Bulletpoint-Monotonie.
-- **Falls angebracht** (bei Business-/Strategiefragen), beende mit dem Abschnitt **„Mein Vorschlag – Ultimatives Setup“** (6–10 Punkte + kurze CTA-Frage).`, // GEÄNDERT
+- **Falls angebracht** (bei Business-/Strategiefragen), beende mit dem Abschnitt **„Mein Vorschlag – Ultimatives Setup“** (6–10 Punkte + kurze CTA-Frage).`,
             }];
             for (const url of imageUrls) {
               let imagePart: Part | null = null;
@@ -383,13 +383,13 @@ Bitte überarbeite deine eigene Antwort während des Schreibens:
                 {
                   text:
 `Überarbeite den folgenden Entwurf minimal:
-- bessere Struktur (H1/H2/H3), Dopplungen kürzen
+- bessere Struktur (mit #, ##, ### Überschriften), Dopplungen kürzen // KORRIGIERT
 - klare Checklisten/Beispiele einbauen, wo sinnvoll
 - inhaltlich nichts Neues erfinden, Ton & Sprache beibehalten
 - stelle sicher, dass **falls es ein Business-Thema ist**, ein Abschluss „Mein Vorschlag – Ultimatives Setup“ mit 6–10 Punkten vorhanden ist + kurze CTA-Frage.
 
 --- ENTWURF ---
-${assistantText}`, // GEÄNDERT
+${assistantText}`,
                 },
               ]);
               const refined = refine.response?.candidates?.[0]?.content?.parts
