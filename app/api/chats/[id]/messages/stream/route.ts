@@ -12,19 +12,40 @@ export const dynamic = 'force-dynamic';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-/** ---------- NEU: System-Prompt (Qualität & Stil) ---------- */
+/** ---------- System-Prompt (Qualität & Stil) ---------- */
 const SYSTEM_PROMPT = `
 Du bist „SiniSpace Assistant“. Sprich standardmäßig DEUTSCH.
 
 PRINZIPIEN:
 1) Wahrheit & Genauigkeit zuerst. Keine erfundenen Fakten/Quellen. Unklar? Sag offen „weiß ich nicht“ + schlage den nächsten sinnvollen Schritt vor.
-2) Struktur: Beginne mit einer kurzen Zusammenfassung. Nutze Markdown (H1–H3, Listen, **fett**). Keine unnötigen Wiederholungen.
+2) Struktur: Beginne IMMER mit einer **Kurzfassung** (2–4 Sätze). Nutze Markdown (H1–H3, Listen, **fett**). Keine unnötigen Wiederholungen.
 3) Bei Logik/Mathe/Code: zeige nachvollziehbare, knappe Schritte. Code mit korrektem Fence (\`\`\`ts, \`\`\`bash etc.).
-4) Effektiv mitdenken: Liefere die Lösung + ggf. 1–2 sinnvolle Alternativen/Verbesserungen.
+4) Effektiv mitdenken: Liefere die Lösung + ggf. 1–2 sinnvolle Alternativen/Verbesserungen. Wo sinnvoll: kurze Checklisten/Beispiele.
 5) Halte dich an die Nutzersprache (Standard: Deutsch). Antworte prägnant, freundlich, professionell.
 `.trim();
 
-/** ---------- Hilfsfunktionen (unverändert) ---------- */
+/** ---------- Qualitäts-Defaults (zentral) ---------- */
+const OPENAI_GEN = {
+  temperature: 0.2,
+  top_p: 0.9,
+  max_tokens: 4096,          // ggf. 3072/2048, falls Modell-/Quota-Limits
+  presence_penalty: 0.2,
+  frequency_penalty: 0.25,
+} as const;
+
+const GEMINI_GEN = {
+  temperature: 0.2,
+  topP: 0.9,
+  topK: 64,
+  maxOutputTokens: 4096,      // ggf. 3072/2048, falls Limits greifen
+  // responseMimeType: 'text/markdown', // Nur aktivieren, wenn in deiner Vertex-Version unterstützt
+} as const;
+
+/** ---------- Optional: 2. Pass zur Mini-Verfeinerung ---------- */
+const DO_REFINE = false;        // auf true setzen, wenn du nach dem Stream eine kurze Politur willst
+const REFINE_TRIGGER_LEN = 1200;
+
+/** ---------- Hilfsfunktionen ---------- */
 const getId = (ctx: any) => {
   const v = ctx?.params?.id;
   return Array.isArray(v) ? v[0] : v;
@@ -139,7 +160,7 @@ export async function POST(req: Request, ctx: any) {
             // ------------ OpenAI (GPT-4o/mini) ------------
             console.log(`🚀 [OpenAI Stream] Modell: ${chosen}`);
 
-            // Multimodal: texte + ggf. Bilder
+            // Multimodal: Text + ggf. Bilder
             const parts: any[] = [{ type: 'text', text: last.content ?? '' }];
             for (const url of imageUrls) {
               if (/^https?:\/\//i.test(url)) {
@@ -164,9 +185,7 @@ export async function POST(req: Request, ctx: any) {
             const completion = await openai.chat.completions.create({
               model: chosen as any,
               stream: true,
-              temperature: 0.3,
-              top_p: 1.0,
-              max_tokens: 1500,
+              ...OPENAI_GEN,
               messages: openaiMessages,
             });
 
@@ -175,6 +194,36 @@ export async function POST(req: Request, ctx: any) {
               if (delta) {
                 assistantText += delta;
                 send({ type: 'delta', text: delta });
+              }
+            }
+
+            // ---------- Optionaler Refine-Pass (OpenAI) ----------
+            if (DO_REFINE && assistantText.length > REFINE_TRIGGER_LEN) {
+              const refine = await openai.chat.completions.create({
+                model: chosen as any,
+                stream: false,
+                ...OPENAI_GEN,
+                messages: [
+                  { role: 'system', content: SYSTEM_PROMPT },
+                  {
+                    role: 'user',
+                    content:
+`Überarbeite den folgenden Entwurf minimal:
+- bessere Struktur (H1/H2/H3), Dopplungen kürzen
+- klare Checklisten/Beispiele einbauen, wo sinnvoll
+- inhaltlich nichts Neues erfinden, Ton & Sprache beibehalten
+
+--- ENTWURF ---
+${assistantText}`,
+                  },
+                ],
+              });
+              const refined = refine.choices?.[0]?.message?.content?.trim();
+              if (refined && refined.length > 0) {
+                // Optional: dem Client kenntlich machen, dass dies die polierte Fassung ist
+                // send({ type: 'delta', text: '\n\n---\n' });
+                // send({ type: 'delta', text: refined });
+                assistantText = refined;
               }
             }
 
@@ -211,20 +260,45 @@ export async function POST(req: Request, ctx: any) {
 
             const chatSession = model.startChat({
               history,
-              generationConfig: {
-                temperature: 0.3,
-                topP: 1.0,
-                topK: 40,
-                maxOutputTokens: 1500,
-              },
+              generationConfig: GEMINI_GEN,
             });
 
             const result = await chatSession.sendMessageStream(userParts);
             for await (const chunk of result.stream) {
-              const delta = chunk.candidates?.[0]?.content?.parts?.map(p => (p as any).text ?? '').join('') ?? '';
+              const delta =
+                chunk.candidates?.[0]?.content?.parts?.map(p => (p as any).text ?? '').join('') ?? '';
               if (delta) {
                 assistantText += delta;
                 send({ type: 'delta', text: delta });
+              }
+            }
+
+            // ---------- Optionaler Refine-Pass (Gemini) ----------
+            if (DO_REFINE && assistantText.length > REFINE_TRIGGER_LEN) {
+              const refineSession = model.startChat({
+                history: [],
+                generationConfig: GEMINI_GEN,
+              });
+              const refine = await refineSession.sendMessage([
+                {
+                  text:
+`Überarbeite den folgenden Entwurf minimal:
+- bessere Struktur (H1/H2/H3), Dopplungen kürzen
+- klare Checklisten/Beispiele einbauen, wo sinnvoll
+- inhaltlich nichts Neues erfinden, Ton & Sprache beibehalten
+
+--- ENTWURF ---
+${assistantText}`,
+                },
+              ]);
+              const refined = refine.response?.candidates?.[0]?.content?.parts
+                ?.map((p: any) => p.text ?? '')
+                .join('')
+                .trim();
+              if (refined && refined.length > 0) {
+                // send({ type: 'delta', text: '\n\n---\n' });
+                // send({ type: 'delta', text: refined });
+                assistantText = refined;
               }
             }
           }
@@ -234,6 +308,7 @@ export async function POST(req: Request, ctx: any) {
             data: { chatId: chat.id, role: 'assistant', content: assistantText, model: chosen },
           });
 
+          // Optional: Usage messen/übergeben (hier leer)
           send({ type: 'usage', usage: {} });
           send({ type: 'done' });
           controller.close();

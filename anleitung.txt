@@ -2,12 +2,11 @@
 
 
 
-git add . (Alle Änderungen vormerken)
+git add . 
 
-git commit -m "Admin-Benachrichtigung für Sinispace hinzugefügt" (Änderungen lokal speichern)
+git commit -m "prompt Änderungen" 
 
-git push (Änderungen zu GitHub hochladen)
-
+git push 
 
 
 
@@ -24,3 +23,12 @@ npm install (Pakete aktualisieren, falls nötig)
 npm run build (Wichtigster Schritt: Den geänderten TypeScript-Code in JavaScript "übersetzen")
 
 pm2 restart sinispace (Den laufenden Server mit dem neuen Code neustarten)
+
+--------------
+
+Open vpn speed tracker
+
+Ssh root@159.195.27.244
+
+apt install iftop -y
+iftop -i tun0
