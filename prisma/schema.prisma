@@ -20,14 +20,15 @@ model User {
 }
 
 model Chat {
-  id        String     @id @default(cuid())
-  user      User       @relation(fields: [userId], references: [id])
-  userId    String
-  title     String
-  model     String
-  messages  Message[]
-  usage     Usage[]
-  createdAt DateTime   @default(now())
+  id        String     @id @default(cuid())
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade) // Hab ein onDelete hinzugefügt, gute Praxis
+  userId    String
+  title     String
+  model     String     @default("gpt-4o") // Ein Default ist hier sinnvoll
+  modelLevel String    @default("simple") // <--- DAS IST DIE WICHTIGE ZEILE
+  messages  Message[]
+  usage     Usage[]
+  createdAt DateTime   @default(now())
 }
 
 model Message {
