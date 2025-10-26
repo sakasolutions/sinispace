@@ -12,11 +12,10 @@ export const dynamic = 'force-dynamic';
 
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
 
-// --- NEU: Definition der 3 System-Prompts ---
+// --- NEU: Definition der 2 relevanten System-Prompts ---
 
 /**
- * (NEU) PFAD A: Für billige, schnelle Alltagsanfragen.
- * Wird von gpt-4o-mini oder gemini-flash genutzt.
+ * PFAD A: Für billige, schnelle Alltagsanfragen.
  */
 const SIMPLE_SYSTEM_PROMPT = `
 Du bist ein hilfreicher und freundlicher Assistent. Sprich standardmäßig DEUTSCH.
@@ -24,8 +23,8 @@ Antworte klar, präzise und auf den Punkt. Nutze Markdown (#, ##, Listen) für d
 `.trim();
 
 /**
- * (NEU) PFAD B: Für Pro-Nutzer & Projektanfragen.
- * Dies ist der "Router", der den Premium-Workflow anbietet.
+ * PFAD B: Für Pro-Nutzer & Projektanfragen.
+ * (GEÄNDERT: Die Follow-Up-Regel für "Schnelle Zusammenfassung" ist jetzt dynamisch)
  */
 const PRO_ROUTER_SYSTEM_PROMPT = `
 Du bist „SiniSpace Assistant“. Sprich standardmäßig DEUTSCH.
@@ -54,14 +53,12 @@ Dies ist der Pfad für 90% aller Anfragen:
 Dies ist der Pfad für 10% der Anfragen – wenn der Nutzer ein NEUES, echtes PROBLEM lösen oder ein VORHABEN starten will.
 Trigger-Beispiele:
 - "Marketingplan für..."
-- "Business für meine Freundin ankurbeln..." (z. B. die Acryl-Malerin)
+- "Business für meine Freundin ankurbeln..."
 - "Wie verkaufe ich X..."
 - "Ich brauche ein komplettes Setup für..."
-- "Eine App entwickeln..."
-- "Businessplan für ein Café..."
 
 **WENN DU PFAD B WÄHLST (und es eine NEUE Anfrage ist):**
-1.  **STOPP!** Gib NICHT sofort die volle Lösung oder ein "Ultimatives Setup".
+1.  **STOPP!** Gib NICHT sofort die volle Lösung.
 2.  Deine *einzige* Antwort muss das "Projekt-Angebot" sein.
 3.  Antworte *genau* in diesem Format:
 
@@ -94,7 +91,10 @@ PRINZIPIEN (Für PFAD A & Follow-Ups)
 FOLLOW-UP-REGELN (NACH PFAD B)
 --------------------------------------------------
 - **Wenn Nutzer "Schnelle Zusammenfassung" wählt:**
-  Generiere die "Ultimatives Setup"-Checkliste (6-10 Punkte + CTA-Frage). Nutze dafür die Funktion \`buildClosingProposal\` (z.B. das "Kunst-Setup" oder das "Generische Setup").
+  Antworte SOFORT mit: "Absolut, hier ist dein persönliches Setup.".
+  Generiere dann einen Abschnitt \`## Mein Vorschlag – „Ultimatives Setup“\`.
+  Erstelle eine **individuelle Checkliste mit 6-10 Punkten**, die *präzise auf das Problem des Nutzers* zugeschnitten ist (z.B. für "Schmuck", "Acrylmalerei", "Café" etc.).
+  Schließe mit einer kurzen, passenden CTA-Frage (z.B. "Soll ich dir dafür einen Content-Kalender erstellen?").
 
 - **Wenn Nutzer "Geführtes Projekt" wählt:**
   Antworte mit: "Großartig. Fangen wir professionell an. Jedes erfolgreiche Projekt steht auf mehreren Säulen. Für dein Ziel [Ziel des Nutzers, z.B. 'Kunst verkaufen'] habe ich folgenden Phasen-Plan:
@@ -114,13 +114,12 @@ FOLLOW-UP-REGELN (NACH PFAD B)
   ---
   **Lass uns mit Phase 1: Fundament & Branding beginnen.**
   
-  Meine erste Frage: [Stelle die erste, wichtigste Frage zu Phase 1, z.B. "Wie würdest du den einzigartigen Stil deiner Freundin in 3 Worten beschreiben?"]"
+  Meine erste Frage: [Stelle die erste, wichtigste Frage zu Phase 1, z.B. "Wie würdest du den einzigartigen Stil in 3 Worten beschreiben?"]"
 `.trim();
 
 
 /**
- * (NEU) Der "Wachmann": Klassifiziert Anfragen, um Token zu sparen.
- * Nutzt immer ein günstiges, schnelles Modell.
+ * Der "Wachmann": Klassifiziert Anfragen, um Token zu sparen.
  */
 async function runPreflightCheck(userQuery: string): Promise<'SIMPLE' | 'PROJECT'> {
   const model = 'gpt-4o-mini'; // Günstiges & schnelles Modell für die Klassifizierung
@@ -149,7 +148,6 @@ Anfrage: ${userQuery}`;
 
 
 /** ---------- Qualitäts-Defaults (zentral) ---------- */
-// Diese gelten jetzt primär für die PRO-Modelle
 const OPENAI_GEN = {
   temperature: 0.45,
   top_p: 0.9,
@@ -169,8 +167,7 @@ const GEMINI_GEN = {
 const DO_REFINE = false;
 const REFINE_TRIGGER_LEN = 1400;
 
-/** ---------- Hilfsfunktionen ---------- */
-// Diese bleiben alle gleich wie vorher
+/** ---------- Hilfsfunktionen (Nur noch Bildverarbeitung) ---------- */
 const getId = (ctx: any) => {
   const v = ctx?.params?.id;
   return Array.isArray(v) ? v[0] : v;
@@ -222,7 +219,6 @@ async function toDataUrlFromLocalUpload(urlPath: string): Promise<string> {
 }
 
 async function fetchImageAsBase64Part(url: string): Promise<Part | null> {
-  // ... (Code unverändert)
   try {
     const response = await fetch(url);
     if (!response.ok) {
@@ -245,68 +241,8 @@ async function fetchImageAsBase64Part(url: string): Promise<Part | null> {
 }
 
 /** ---------- CTA-Templates & Helfer ---------- */
-// Diese bleiben alle gleich wie vorher
-function isProfessionalQuery(userText: string): boolean {
-  if (!userText) return false;
-  const keywords = [
-    'setup', 'business', 'marketing', 'strategie', 'plan',
-    'umsatz', 'kunden', 'generieren', 'reichweite', 'verkaufen',
-    'shop', 'e-commerce', 'projekt', 'vorschlag', 'anbieten',
-    'acrylbilder', 'kunst', 'gemalt', 'malerei', 'business anzukurbeln',
-    'schnelle zusammenfassung' // <-- WICHTIG: Damit der Failsafe auch nach dem Projekt-Angebot greift
-  ];
-  const regex = new RegExp(keywords.join('|'), 'i');
-  return regex.test(userText);
-}
+// GELÖSCHT: isProfessionalQuery, buildClosingProposal, ensureClosingSection
 
-function buildClosingProposal(userText: string): string {
-  // ... (Code unverändert)
-  const isArtMarketing = /acryl|kunst|künstler|malerei|instagram|pinterest|galerie|bilder|art|canvas/i.test(userText || '');
-  if (isArtMarketing) {
-    return `
-## Mein Vorschlag – „Ultimatives Setup“
-
-- **Branding-Kit:** Logo, Farbpalette, Typografie + 3 Feed-Layouts (Mockups).
-- **Instagram-Plan:** 4 Posts/Woche, tägliche Story, monatlich 1 Reel-Serie (Making-of).
-- **Content-Produktion:** 10–15 vorbereitete Fotos/Videos (Detailshots, Raum-Mockups, Timelapse).
-- **Shop/Checkout:** Einfacher Kauf-/Anfrage-Flow (Link in Bio, Kontaktformular, Newsletter-Opt-in).
-- **Hashtag & Zielgruppen-Research:** DE/EU, Interior & Kunst-Affinitäten, lokale Tags.
-- **Ads-Testlauf:** 50–150 € / 2–4 Wochen, 2 Creatives × 2 Zielgruppen, wöchentliches Tuning.
-- **Kooperation lokal:** Einrichtungsgeschäft/Galerie + QR-Flyer mit Mini-Portfolio.
-- **Social Proof:** Kundenfoto-Challenge + Testimonials-Kacheln.
-- **Reporting:** Wöchentlich 15 min: Reichweite, Saves, Anfragen, Sales-Funnel.
-
-**Soll ich dir direkt einen 4-Wochen-Content-Kalender mit Caption-Vorlagen (inkl. Emojis & CTA) erstellen?**`;
-  }
-  // Generisches, hochwertiges Closing
-  return `
-## Mein Vorschlag – „Ultimatives Setup“
-
-- **Zielbild definieren:** klare KPI (z. B. Anfragen/Woche, Conversion, Umsatz).
-- **Content-Backlog:** 10–15 hochwertige Assets (Texte, Visuals, Kurzvideos).
-- **Kanal-Fokus:** 1 Kernkanal + 1 Supportkanal (Workflows/Planung fix).
-- **Conversion-Strecke:** klare CTAs, reduzierte Reibung (Formulare, Checkout, Termine).
-- **Schnelltests:** 2–3 Hypothesen/Monat (A/B-Hooks, Creatives, Offers).
-- **Retargeting-Setup:** Interessenten erneut ansprechen (E-Mail/Ads).
-- **Proof-Layer:** Referenzen, Cases, Social Proof prominenter platzieren.
-- **Review-Ritual:** 1×/Woche 15 min: Metriken → Learnings → Anpassungen.
-
-**Soll ich das sofort in einen konkreten 30-Tage-Plan mit Aufgaben pro Woche übersetzen?**`;
-}
-
-function ensureClosingSection(text: string, userText: string): string {
-  // ... (Code unverändert)
-  // Diese Funktion ist weiterhin nützlich als Failsafe für die "Schnelle Zusammenfassung"
-  const alreadyHas = /mein vorschlag|ultimatives setup|nächste schritte|next steps/i.test(text || '');
-  if (alreadyHas) return text;
-
-  if (!isProfessionalQuery(userText)) {
-    return text;
-  }
-
-  const cta = buildClosingProposal(userText);
-  return `${text.trim()}\n\n${cta.trim()}\n`;
-}
 
 /** ---------- Route ---------- */
 export async function POST(req: Request, ctx: any) {
@@ -320,10 +256,10 @@ export async function POST(req: Request, ctx: any) {
     };
 
     const user = await getPrismaUserFromSession();
-    // --- NEU: Holen den 'modelLevel' aus der DB ---
+    // Holen den 'modelLevel' aus der DB
     const chat = await prisma.chat.findFirst({
       where: { id: chatId, userId: user.id },
-      select: { id: true, model: true, modelLevel: true }, // <-- 'modelLevel' hinzugefügt
+      select: { id: true, model: true, modelLevel: true }, 
     });
     if (!chat) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
@@ -335,32 +271,28 @@ export async function POST(req: Request, ctx: any) {
       return NextResponse.json({ error: 'Last message must be user' }, { status: 400 });
     }
 
-    // Speichere die User-Nachricht (unverändert)
+    // Speichere die User-Nachricht
     await prisma.message.create({ data: { chatId: chat.id, role: 'user', content: last.content } });
 
     let assistantText = '';
     const imageUrls = extractImageUrls(last.content);
 
-    // --- NEU: Die "Modell-Kaskade" Logik ---
-
+    // --- "Modell-Kaskade" Logik ---
     let systemPrompt: string;
     let chosenModel: string;
     let effectiveModelLevel = chat.modelLevel as 'simple' | 'pro';
-    let isNewProjectOffer = false; // Flag, um DB-Update zu triggern
+    let isNewProjectOffer = false; 
 
-    // Der vom Nutzer im Frontend gewählte "Wunsch-Modell" (z.B. gpt-4o)
     const preferredProModel = (body.model ?? chat.model) as string;
 
     if (effectiveModelLevel === 'pro') {
       // 1. DIES IST BEREITS EIN PRO-CHAT
-      // Wir bleiben im Pro-Modus, nutzen den Pro-Prompt und das Pro-Modell
       console.log(`🚀 [PRO CHAT] Modell: ${preferredProModel}`);
       systemPrompt = PRO_ROUTER_SYSTEM_PROMPT;
       chosenModel = preferredProModel;
 
     } else {
       // 2. DIES IST EIN "SIMPLE" CHAT (Standard)
-      // Wir müssen den "Wachmann" (Preflight) fragen
       console.log(`[PREFLIGHT] Prüfe Intent für: "${last.content.substring(0, 40)}..."`);
       const intent = await runPreflightCheck(last.content);
 
@@ -374,7 +306,6 @@ export async function POST(req: Request, ctx: any) {
       
       } else {
         // 2b. WACHMANN SAGT: "SIMPLE" -> Bleib billig!
-        // Wir nutzen den Simple-Prompt und ein hartcodiertes GÜNSTIGES Modell
         const simpleModel = preferredProModel.startsWith('gemini') ? 'gemini-1.5-flash-latest' : 'gpt-4o-mini';
         console.log(`🚀 [PREFLIGHT -> SIMPLE] Nutze günstiges Modell: ${simpleModel}`);
         effectiveModelLevel = 'simple';
@@ -390,8 +321,7 @@ export async function POST(req: Request, ctx: any) {
         const send = (obj: unknown) => controller.enqueue(`data: ${JSON.stringify(obj)}\n\n`);
 
         try {
-          // --- NEU: DB-Upgrade ausführen ---
-          // Wenn der Chat gerade zum "PROJECT" wurde, speichern wir das jetzt.
+          // DB-Upgrade ausführen
           if (isNewProjectOffer) {
             await prisma.chat.update({
               where: { id: chat.id },
@@ -399,9 +329,8 @@ export async function POST(req: Request, ctx: any) {
             });
             console.log(`[DB UPDATE] Chat ${chat.id} ist jetzt "pro"`);
           }
-          // ---
 
-          // Die In-Stream-Politur-Anweisung (angepasst)
+          // Die In-Stream-Politur-Anweisung
           const politurPrompt = `
 
 Bitte überarbeite deine eigene Antwort während des Schreibens:
@@ -409,7 +338,7 @@ Bitte überarbeite deine eigene Antwort während des Schreibens:
 - streiche Dopplungen,
 - füge – wo sinnvoll – kurze Checklisten/Beispiele hinzu,
 - nutze natürliche, lebendige Sprache statt Bulletpoint-Monotonie.
-${effectiveModelLevel === 'pro' ? '- **Falls angebracht** (Business/Strategie), beende mit „Mein Vorschlag – Ultimatives Setup“.' : ''}
+${effectiveModelLevel === 'pro' ? '- Wenn du eine "Ultimatives Setup"-Checkliste erstellst, stelle sicher, dass sie 6-10 *maßgeschneiderte* Punkte und eine CTA-Frage enthält.' : ''}
 `;
 
 
@@ -435,13 +364,13 @@ ${effectiveModelLevel === 'pro' ? '- **Falls angebracht** (Business/Strategie), 
             }
 
             const openaiMessages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
-              { role: 'system', content: systemPrompt }, // NEU: dynamischer Prompt
+              { role: 'system', content: systemPrompt },
               ...body.messages.slice(0, -1).map((m) => ({ role: m.role, content: m.content ?? '' })),
               { role: 'user', content: parts },
             ];
 
             const completion = await openai.chat.completions.create({
-              model: chosenModel as any, // NEU: dynamisches Modell
+              model: chosenModel as any,
               stream: true,
               ...OPENAI_GEN,
               messages: openaiMessages,
@@ -457,28 +386,7 @@ ${effectiveModelLevel === 'pro' ? '- **Falls angebracht** (Business/Strategie), 
 
             // ---------- Optionaler Refine-Pass (OpenAI) ----------
             if (DO_REFINE && assistantText.length > REFINE_TRIGGER_LEN) {
-              const refine = await openai.chat.completions.create({
-                model: chosenModel as any,
-                stream: false,
-                ...OPENAI_GEN,
-                messages: [
-                  { role: 'system', content: systemPrompt },
-                  {
-                    role: 'user',
-                    content: `Überarbeite den folgenden Entwurf minimal:
-- bessere Struktur (mit #, ##, ### Überschriften), Dopplungen kürzen
-- klare Checklisten/Beispiele einbauen, wo sinnvoll
-- inhaltlich nichts Neues erfinden, Ton & Sprache beibehalten
-${effectiveModelLevel === 'pro' ? '- stelle sicher, dass **falls es ein Business-Thema ist**, ein Abschluss „Mein Vorschlag – Ultimatives Setup“ vorhanden ist.' : ''}
---- ENTWURF ---
-${assistantText}`,
-                  },
-                ],
-              });
-              const refined = refine.choices?.[0]?.message?.content?.trim();
-              if (refined && refined.length > 0) {
-                assistantText = refined;
-              }
+              // ... (Refine-Logik, falls benötigt) ...
             }
 
           } else {
@@ -491,8 +399,8 @@ ${assistantText}`,
             });
 
             const model = vertex_ai.getGenerativeModel({
-              model: chosenModel, // NEU: dynamisches Modell
-              systemInstruction: systemPrompt, // NEU: dynamischer Prompt
+              model: chosenModel,
+              systemInstruction: systemPrompt,
             });
 
             const history = body.messages.slice(0, -1).map((m) => ({
@@ -506,7 +414,7 @@ ${assistantText}`,
             for (const url of imageUrls) {
               let imagePart: Part | null = null;
               if (url.startsWith('/uploads/')) imagePart = await toInlineDataFromLocalUpload(url);
-              else if (/^https?:\/\//i.test(url)) imagePart = await fetchImageAsBase64Part(url);
+              else if (/^httpska?:\/\//i.test(url)) imagePart = await fetchImageAsBase64Part(url);
               if (imagePart) userParts.push(imagePart);
               else console.warn(`Konnte Bild ${url} nicht verarbeiten.`);
             }
@@ -530,15 +438,9 @@ ${assistantText}`,
             
           }
 
-          // **Failsafe: Abschluss-Block anhängen (unverändert)**
-          // Diese Logik funktioniert weiterhin perfekt für den "Schnelle Zusammenfassung"-Pfad.
-          // Bei "SIMPLE"-Chats wird isProfessionalQuery() false sein.
-          const withClosing = ensureClosingSection(assistantText, last.content);
-          if (withClosing.length > assistantText.length) {
-            const append = withClosing.slice(assistantText.length);
-            send({ type: 'delta', text: append });
-            assistantText = withClosing;
-          }
+          // **Failsafe: Abschluss-Block (GELÖSCHT)**
+          // Wir vertrauen jetzt darauf, dass das Pro-Modell die Anweisungen
+          // im PRO_ROUTER_SYSTEM_PROMPT befolgt.
 
           // Antwort speichern
           await prisma.message.create({
@@ -546,7 +448,7 @@ ${assistantText}`,
               chatId: chat.id, 
               role: 'assistant', 
               content: assistantText, 
-              model: chosenModel // NEU: Speichere das *effektiv genutzte* Modell
+              model: chosenModel
             },
           });
 
