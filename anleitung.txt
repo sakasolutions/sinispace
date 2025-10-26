@@ -4,7 +4,7 @@
 
 git add . 
 
-git commit -m "design Änderung" 
+git commit -m "prompt Änderung" 
 
 git push 
 
