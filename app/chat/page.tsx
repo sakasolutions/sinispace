@@ -96,7 +96,7 @@ async function uploadFile(file: File) {
 // ===== Page Component =====
 export default function ChatPage() {
   const [chats, setChats] = useState<Chat[]>([]);
-  const [activeChatId, setActiveChatId] = useState<string | null>(null);
+  const [activeChatId, setActiveChatId] = useState<string | null>(null); // <-- Startet jetzt als null
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [messagesByChat, setMessagesByChat] = useState<Record<string, Message[]>>({});
   const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -116,16 +116,14 @@ export default function ChatPage() {
   }, [chats]);
   const [projectFilter, setProjectFilter] = useState<string | 'ALL'>('ALL');
 
-  // ... (Alle Hooks bleiben 1:1 gleich) ...
+  // ===== MODIFIZIERTER HOOK =====
+  // Lädt Chats, aber wählt nicht mehr automatisch den ersten aus.
   useEffect(() => {
     (async () => {
       try {
         const list = await apiListChats();
         setChats(list);
-        if (list.length) {
-          setActiveChatId(list[0].id);
-          void loadMessages(list[0].id);
-        }
+        // App startet jetzt mit activeChatId = null, um den Hub anzuzeigen
       } catch (e: any) { setError(e.message ?? String(e)); }
     })();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
@@ -144,13 +142,14 @@ export default function ChatPage() {
       setChats((prev) => [created, ...prev]);
       setMessagesByChat((prev) => ({ ...prev, [created.id]: [] }));
       setDrafts((prev) => ({ ...prev, [created.id]: '' }));
-      setActiveChatId(created.id);
+      setActiveChatId(created.id); // <-- Dieser Aufruf wechselt die Ansicht zum Chat
       setSidebarOpen(false);
     } catch (e: any) { setError(e.message ?? String(e)); }
   }, []);
 
   const handleSelectChat = useCallback(async (chatId: string) => {
-    setActiveChatId(chatId); setSidebarOpen(false);
+    setActiveChatId(chatId); // <-- Dieser Aufruf wechselt die Ansicht zum Chat
+    setSidebarOpen(false);
     if (!messagesByChat[chatId]) await loadMessages(chatId);
   }, [messagesByChat, loadMessages]);
 
@@ -163,11 +162,11 @@ export default function ChatPage() {
       setChats(prev => prev.filter(c => c.id !== chatId));
       setMessagesByChat(prev => { const cp = { ...prev }; delete cp[chatId]; return cp; });
       if (activeChatId === chatId) {
-        const next = chats.find(c => c.id !== chatId);
-        setActiveChatId(next?.id ?? null);
+        // Kehrt zum Hub zurück, da kein Chat mehr aktiv ist
+        setActiveChatId(null); 
       }
     } catch (e: any) { setError(e.message ?? String(e)); }
-  }, [activeChatId, chats]);
+  }, [activeChatId, chats]); // <- chats hinzugefügt, da es im "if (activeChatId === chatId)"-Block verwendet wird
 
   const setActiveDraft = useCallback((val: string) => {
     if (!activeChatId) return;
@@ -293,7 +292,8 @@ export default function ChatPage() {
     const el = listRef.current; if (!el) return;
     const onScroll = () => { const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 96; userScrolledUpRef.current = !nearBottom; };
     el.addEventListener('scroll', onScroll); return () => el.removeEventListener('scroll', onScroll);
-  }, []);
+  }, [activeChat]); // <-- Abhängigkeit auf activeChat geändert, damit es neu bindet, wenn die Chat-UI eingeblendet wird
+
   useEffect(() => {
     const el = listRef.current; if (!el || userScrolledUpRef.current) return;
     el.scrollTop = el.scrollHeight;
@@ -338,30 +338,35 @@ export default function ChatPage() {
               </svg>
               <span className="hidden sm:inline sm:ml-1.5">Einstellungen</span>
             </Link>
-            <select
-              className="max-w-[44vw] sm:max-w-none text-xs sm:text-sm rounded-lg border border-neutral-300 bg-white px-2 py-1.5 outline-none hover:bg-neutral-100 truncate"
-              value={activeChat?.model ?? 'gpt-4o'}
-              onChange={(e) => patchChatModel(e.target.value as Model)}
-              aria-label="KI-Modell wählen"
-              disabled={!activeChat}
-            >
-              <option value="gpt-4o">GPT-4o (Stark)</option>
-              <option value="gpt-4o-mini">GPT-4o-mini (Schnell)</option>
-              <option value="gemini-2.5-pro">Gemini 2.5 Pro (Aktuell)</option>
-            </select>
-            {isStreaming ? (
-              <button onClick={handleStop} className="rounded-lg border border-neutral-300 bg-white px-2 sm:px-3 py-1.5 text-xs sm:text-sm hover:bg-neutral-100">
-                Stop
-              </button>
-            ) : (
-              <button
-                onClick={handleRegenerateLast}
-                className="rounded-lg border border-neutral-300 bg-white px-2 sm:px-3 py-1.5 text-xs sm:text-sm hover:bg-neutral-100 disabled:opacity-40"
-                disabled={!activeChat || (messagesByChat[activeChat?.id ?? ''] ?? []).length === 0}
-                title="Letzte Antwort neu generieren"
-              >
-                Neu
-              </button>
+            
+            {/* Header-Buttons werden nur angezeigt, wenn ein Chat aktiv ist */}
+            {activeChat && (
+              <>
+                <select
+                  className="max-w-[44vw] sm:max-w-none text-xs sm:text-sm rounded-lg border border-neutral-300 bg-white px-2 py-1.5 outline-none hover:bg-neutral-100 truncate"
+                  value={activeChat.model}
+                  onChange={(e) => patchChatModel(e.target.value as Model)}
+                  aria-label="KI-Modell wählen"
+                >
+                  <option value="gpt-4o">GPT-4o (Stark)</option>
+                  <option value="gpt-4o-mini">GPT-4o-mini (Schnell)</option>
+                  <option value="gemini-2.5-pro">Gemini 2.5 Pro (Aktuell)</option>
+                </select>
+                {isStreaming ? (
+                  <button onClick={handleStop} className="rounded-lg border border-neutral-300 bg-white px-2 sm:px-3 py-1.5 text-xs sm:text-sm hover:bg-neutral-100">
+                    Stop
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleRegenerateLast}
+                    className="rounded-lg border border-neutral-300 bg-white px-2 sm:px-3 py-1.5 text-xs sm:text-sm hover:bg-neutral-100 disabled:opacity-40"
+                    disabled={(messagesByChat[activeChat.id] ?? []).length === 0}
+                    title="Letzte Antwort neu generieren"
+                  >
+                    Neu
+                  </button>
+                )}
+              </>
             )}
             <button
               onClick={() => handleNewChat()}
@@ -405,7 +410,7 @@ export default function ChatPage() {
               projectFilter={projectFilter}
             />
           </div>
-          {usage && (
+          {usage && activeChat && ( // <-- Nur anzeigen, wenn ein Chat aktiv ist
             <div className="p-3 border-t border-neutral-200 text-[11px] text-neutral-600 shrink-0">
               {usage.inputTokens ? `In: ${usage.inputTokens} • ` : ''}
               {usage.outputTokens ? `Out: ${usage.outputTokens} • ` : ''}
@@ -454,93 +459,242 @@ export default function ChatPage() {
           </div>
         )}
 
+        {/* ===== MODIFIZIERTER HAUPTBEREICH ===== */}
         <section className="h-full flex flex-col overflow-hidden bg-white">
-          <div className="px-3 sm:px-6 pt-3 shrink-0">
-            <div className="text-xs text-yellow-900 bg-yellow-400/20 border border-yellow-400/30 rounded-lg p-2">
-              KI kann Fehler machen. Inhalte prüfen – besonders bei rechtlichen/medizinischen/finanziellen Themen.
+          {!activeChat ? (
+            // ----- 1. TOOL HUB (Wird angezeigt, wenn kein Chat aktiv ist) -----
+            <div className="flex-1 overflow-auto scroll-smooth">
+              <ToolHub onStartFreeChat={handleNewChat} />
             </div>
-            {error && <div className="mt-2 text-sm text-red-900 bg-red-500/10 border border-red-400/30 rounded-lg p-2">{error}</div>}
-          </div>
 
-          <div ref={listRef} className="flex-1 overflow-auto px-3 sm:px-6 py-4 overscroll-contain scroll-smooth">
-            {/* --- FEINSCHLIFF: Größerer Abstand zwischen Nachrichten --- */}
-            <div className="mx-auto w-full md:max-w-3xl space-y-4 sm:space-y-5">
-              {activeMessages.map((m, i) => {
-                const prev = activeMessages[i - 1]; const grouped = !!(prev && prev.role === m.role);
-                return (
-                  <MessageBubble
-                    key={m.id}
-                    message={m}
-                    onCopy={() => copyText(m.content)}
-                    onEdit={m.role === 'user' ? () => handleEditAndResend(m.id) : undefined}
-                    isStreaming={isStreaming && m.role === 'assistant' && m === activeMessages[activeMessages.length - 1]}
-                    grouped={grouped}
-                  />
-                );
-              })}
-            </div>
-          </div>
+          ) : (
 
-          <div className="sticky bottom-0 z-10 px-3 sm:px-6 pb-3 shrink-0" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
-            <div className="mx-auto w-full md:max-w-3xl rounded-2xl border border-neutral-300 bg-white p-2 shadow-xl shadow-neutral-400/20">
-              <div className="flex items-end gap-2">
-                <button
-                  onClick={handlePickFile}
-                  className="h-10 w-10 flex items-center justify-center rounded-xl border border-neutral-300 bg-white hover:bg-neutral-100 text-sm disabled:opacity-50"
-                  title={uploading ? 'Lade hoch…' : 'Datei anhängen'}
-                  aria-label="Datei anhängen"
-                  disabled={!activeChat || uploading || isStreaming}
-                >
-                  {/* ... (Upload-Icon unverändert) ... */}
-                   {uploading ? (
-                    <svg className="animate-spin h-5 w-5 text-neutral-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                    </svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94a3 3 0 1 1 4.243 4.242l-9.88 9.88a1.5 1.5 0 0 1-2.12-2.12l6.364-6.364m-6.364 0 .636-.636m-6.364 0 .636.636" />
-                    </svg>
+            // ----- 2. CHAT INTERFACE (Wird angezeigt, wenn ein Chat aktiv ist) -----
+            <>
+              <div className="px-3 sm:px-6 pt-3 shrink-0">
+                <div className="text-xs text-yellow-900 bg-yellow-400/20 border border-yellow-400/30 rounded-lg p-2">
+                  KI kann Fehler machen. Inhalte prüfen – besonders bei rechtlichen/medizinischen/finanziellen Themen.
+                </div>
+                {error && <div className="mt-2 text-sm text-red-900 bg-red-500/10 border border-red-400/30 rounded-lg p-2">{error}</div>}
+              </div>
+
+              <div ref={listRef} className="flex-1 overflow-auto px-3 sm:px-6 py-4 overscroll-contain scroll-smooth">
+                <div className="mx-auto w-full md:max-w-3xl space-y-4 sm:space-y-5">
+                  {activeMessages.length === 0 && (
+                    <div className="text-center text-sm text-neutral-500 pt-8">
+                      Beginne dein Gespräch.
+                    </div>
                   )}
-                </button>
-                <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt" className="hidden" onChange={handleFileChange} />
-                <textarea
-                  className="flex-1 min-h-10 max-h-40 h-10 resize-y rounded-xl border border-neutral-300 bg-white p-2 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-opacity-50 break-words" // <-- FEINSCHLIFF: Focus-Ring
-                  placeholder={activeChat ? 'Nachricht an die KI …' : 'Erst einen Chat erstellen'}
-                  value={draft}
-                  onChange={(e) => setActiveDraft(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
-                  disabled={!activeChat || isStreaming}
-                  aria-label="Nachricht schreiben"
-                />
-                <button
-                  onClick={handleSend}
-                  disabled={!activeChat || !draft.trim() || isStreaming}
-                  className={cls('h-10 px-4 rounded-xl text-sm font-medium bg-neutral-900 text-white', (!!activeChat && !!draft.trim() && !isStreaming) ? 'hover:opacity-90' : 'opacity-40 cursor-not-allowed')}
-                >
-                  {isStreaming ? 'Senden…' : 'Senden'}
-                </button>
+                  {activeMessages.map((m, i) => {
+                    const prev = activeMessages[i - 1]; const grouped = !!(prev && prev.role === m.role);
+                    return (
+                      <MessageBubble
+                        key={m.id}
+                        message={m}
+                        onCopy={() => copyText(m.content)}
+                        onEdit={m.role === 'user' ? () => handleEditAndResend(m.id) : undefined}
+                        isStreaming={isStreaming && m.role === 'assistant' && m === activeMessages[activeMessages.length - 1]}
+                        grouped={grouped}
+                      />
+                    );
+                  })}
+                </div>
               </div>
-              {/* --- FEINSCHLIFF: Kleinerer Text unten --- */}
-              <div className="mt-1 flex flex-wrap items-center gap-2 justify-between text-[10px] text-neutral-500 px-1">
-                <div>Enter = senden • Shift+Enter = Zeilenumbruch</div>
-                {usage && (
-                  <div className="hidden sm:block rounded-full border border-neutral-300 bg-white px-2 py-0.5">
-                    {usage.inputTokens ? `In: ${usage.inputTokens} • ` : ''}
-                    {usage.outputTokens ? `Out: ${usage.outputTokens} • ` : ''}
-                    {usage.costUsd ? `Kosten: $${usage.costUsd.toFixed(4)}` : ''}
+
+              <div className="sticky bottom-0 z-10 px-3 sm:px-6 pb-3 shrink-0" style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 0.75rem)' }}>
+                <div className="mx-auto w-full md:max-w-3xl rounded-2xl border border-neutral-300 bg-white p-2 shadow-xl shadow-neutral-400/20">
+                  <div className="flex items-end gap-2">
+                    <button
+                      onClick={handlePickFile}
+                      className="h-10 w-10 flex items-center justify-center rounded-xl border border-neutral-300 bg-white hover:bg-neutral-100 text-sm disabled:opacity-50"
+                      title={uploading ? 'Lade hoch…' : 'Datei anhängen'}
+                      aria-label="Datei anhängen"
+                      disabled={uploading || isStreaming}
+                    >
+                      {/* ... (Upload-Icon unverändert) ... */}
+                      {uploading ? (
+                        <svg className="animate-spin h-5 w-5 text-neutral-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                      ) : (
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="m18.375 12.739-7.693 7.693a4.5 4.5 0 0 1-6.364-6.364l10.94-10.94a3 3 0 1 1 4.243 4.242l-9.88 9.88a1.5 1.5 0 0 1-2.12-2.12l6.364-6.364m-6.364 0 .636-.636m-6.364 0 .636.636" />
+                        </svg>
+                      )}
+                    </button>
+                    <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.txt" className="hidden" onChange={handleFileChange} />
+                    <textarea
+                      className="flex-1 min-h-10 max-h-40 h-10 resize-y rounded-xl border border-neutral-300 bg-white p-2 text-sm placeholder:text-neutral-500 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-opacity-50 break-words"
+                      placeholder={'Nachricht an die KI …'}
+                      value={draft}
+                      onChange={(e) => setActiveDraft(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
+                      disabled={isStreaming}
+                      aria-label="Nachricht schreiben"
+                    />
+                    <button
+                      onClick={handleSend}
+                      disabled={!draft.trim() || isStreaming}
+                      className={cls('h-10 px-4 rounded-xl text-sm font-medium bg-neutral-900 text-white', (!!draft.trim() && !isStreaming) ? 'hover:opacity-90' : 'opacity-40 cursor-not-allowed')}
+                    >
+                      {isStreaming ? 'Senden…' : 'Senden'}
+                    </button>
                   </div>
-                )}
+                  <div className="mt-1 flex flex-wrap items-center gap-2 justify-between text-[10px] text-neutral-500 px-1">
+                    <div>Enter = senden • Shift+Enter = Zeilenumbruch</div>
+                    {usage && (
+                      <div className="hidden sm:block rounded-full border border-neutral-300 bg-white px-2 py-0.5">
+                        {usage.inputTokens ? `In: ${usage.inputTokens} • ` : ''}
+                        {usage.outputTokens ? `Out: ${usage.outputTokens} • ` : ''}
+                        {usage.costUsd ? `Kosten: $${usage.costUsd.toFixed(4)}` : ''}
+                      </div>
+                    )}
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
+            </>
+          )}
         </section>
       </div>
     </div>
   );
 }
 
-// ===== Sub-Komponenten (SidebarChatList Farben & Aktiver State angepasst) =====
+// ===== NEUE SUB-KOMPONENTE: ToolHub =====
+// (Definition der Werkzeuge)
+const TOOLS_CONFIG = [
+  {
+    key: 'social-post',
+    title: 'Social Media Post Creator',
+    description: 'Erstellt Posts für verschiedene Plattformen.',
+    href: '/tools/social-post',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.34 15.84c-.688 0-1.25-.563-1.25-1.25 0-.688.562-1.25 1.25-1.25s1.25.563 1.25 1.25c0 .688-.562 1.25-1.25 1.25m0 0H7.5m3.188 0q.538 0 1.024.11m-1.024-.11a2.5 2.5 0 1 0-4.132 1.87m4.132-1.87q.488.11 1.024.11m-1.024-.11c.688 0 1.25.563 1.25 1.25 0 .688-.562 1.25-1.25 1.25m0 0h3.188m-3.188 0q-.538 0-1.024-.11a2.5 2.5 0 1 1 4.132-1.87m-4.132 1.87q-.488-.11-1.024-.11" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 12c0-5.23-4.27-9.5-9.5-9.5S.5 6.77.5 12s4.27 9.5 9.5 9.5 9.5-4.27 9.5-9.5m-1.625 0a7.875 7.875 0 1 1-15.75 0 7.875 7.875 0 0 1 15.75 0" />
+      </svg>
+    ),
+  },
+  {
+    key: 'marketing-plan',
+    title: 'Marketing Planer',
+    description: 'Entwirft eine grundlegende Marketingstrategie.',
+    href: '/tools/marketing-plan',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 6a7.5 7.5 0 1 0 7.5 7.5h-7.5V6m0 0A7.5 7.5 0 1 0 3 13.5h7.5V6m0 0A7.5 7.5 0 1 0 18 13.5h-7.5V6m0 0v1.5m0 0v3m0 0v3m0 0v3m0 0v1.5m0 0H9m1.5 0H12m0 0h1.5m0 0h1.5m0 0H15m0 0h1.5m0 0H18m0 0h1.5m0 0h1.5m0 0H21" />
+      </svg>
+    ),
+  },
+  {
+    key: 'email-assistant',
+    title: 'E-Mail Assistent',
+    description: 'Hilft beim Verfassen professioneller E-Mails.',
+    href: '/tools/email-assistant',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 0 1-2.25 2.25h-15a2.25 2.25 0 0 1-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0 0 19.5 4.5h-15a2.25 2.25 0 0 0-2.25 2.25m19.5 0v.243a2.25 2.25 0 0 1-1.07 1.916l-7.5 4.615a2.25 2.25 0 0 1-2.36 0L3.32 8.91a2.25 2.25 0 0 1-1.07-1.916V6.75" />
+      </svg>
+    ),
+  },
+  {
+    key: 'rezept-bauer',
+    title: 'Rezept-Bauer',
+    description: 'Kreiert Rezepte basierend auf Zutaten.',
+    href: '/tools/rezept-bauer',
+    icon: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 0 0 6 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 0 1 6 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 0 1 6-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0 0 18 18c-2.305 0-4.408.867-6 2.292m0-14.25v14.25" />
+      </svg>
+    ),
+  },
+];
+
+// (Die ToolHub-Komponente)
+function ToolHub({ onStartFreeChat }: { onStartFreeChat: (model: Model) => Promise<void> }) {
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleFreeChatClick = async () => {
+    setIsLoading(true);
+    try {
+      await onStartFreeChat('gpt-4o'); // Standardmodell für neuen Chat
+    } catch (e) {
+      console.error(e);
+      setIsLoading(false); // Nur im Fehlerfall Loading-Status zurücksetzen
+    }
+    // Bei Erfolg wechselt die übergeordnete Komponente die Ansicht
+  };
+
+  return (
+    <div className="mx-auto max-w-7xl px-3 sm:px-6 py-10">
+      <h1 className="text-2xl font-semibold text-neutral-900 mb-8">Womit möchtest du starten?</h1>
+      
+      {/* Freier Chat Karte */}
+      <div className="mb-10">
+        <button
+          onClick={handleFreeChatClick}
+          disabled={isLoading}
+          className="w-full md:w-2/3 lg:w-1/2 p-5 border border-neutral-300 rounded-xl bg-white hover:bg-neutral-50 shadow-sm hover:shadow-md transition-all flex items-center gap-5 text-left disabled:opacity-60"
+        >
+          <div className="h-12 w-12 rounded-lg bg-neutral-900 text-white flex items-center justify-center shrink-0">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8.625 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0m0 0v-4.5m0 4.5v.375m0-.375c-1.563 0-2.625.62-2.625 1.5V15m0-3.375c1.563 0 2.625.62 2.625 1.5V15m0-3.375h.375m-3.375 0h.375m-3.375 0h.375m0 0v-4.5m0 4.5v.375m0-.375c-1.563 0-2.625.62-2.625 1.5V15m0-3.375c1.563 0 2.625.62 2.625 1.5V15m0-3.375h.375m-3.375 0h.375m-3.375 0h.375M16.125 12a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0m0 0v-4.5m0 4.5v.375m0-.375c-1.563 0-2.625.62-2.625 1.5V15m0-3.375c1.563 0 2.625.62 2.625 1.5V15m0-3.375h.375m-3.375 0h.375m-3.375 0h.375m0 0v-4.5m0 4.5v.375m0-.375c-1.563 0-2.625.62-2.625 1.5V15m0-3.375c1.563 0 2.625.62 2.625 1.5V15m0-3.375h.375m-3.375 0h.375m-3.375 0h.375" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 0 1-1.5 1.5H5.25a1.5 1.5 0 0 1-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1 0 12 10.125A2.625 2.625 0 0 0 12 4.875m0 0H12m0 0v.375m0-.375v-.375m0 .375v.375m0-.375h.375m-.375 0h-.375M12 4.875v.375m0-.375c-.621 0-1.125.504-1.125 1.125v1.5c0 .621.504 1.125 1.125 1.125m0 0h.375m-.375 0h-.375m0 0v.375m0-.375v-.375m0 .375v.375m0-3v.375m0-.375c.621 0 1.125.504 1.125 1.125v1.5c0 .621-.504 1.125-1.125 1.125m0 0h.375m-.375 0h-.375m0 0v.375m0-.375v-.375m0 .375v.375" />
+            </svg>
+          </div>
+          <div className="flex-1">
+            <h2 className="text-lg font-semibold text-neutral-900">Freier Chat</h2>
+            <p className="text-sm text-neutral-600">Starte ein offenes Gespräch mit der KI zu einem beliebigen Thema.</p>
+          </div>
+          {isLoading ? (
+            <svg className="animate-spin h-5 w-5 text-neutral-600 shrink-0" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5 text-neutral-500 shrink-0">
+              <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+            </svg>
+          )}
+        </button>
+      </div>
+
+      {/* Werkzeug-Grid */}
+      <div>
+        <h2 className="text-xl font-semibold text-neutral-900 mb-5">Spezialisierte Werkzeuge</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {TOOLS_CONFIG.map(tool => (
+            <Link 
+              key={tool.key} 
+              href={tool.href} 
+              className="block p-5 border border-neutral-200 rounded-xl bg-white shadow-sm hover:bg-neutral-50 hover:shadow-lg transition-all group"
+            >
+              <div className="h-10 w-10 rounded-lg bg-indigo-100 text-indigo-700 flex items-center justify-center mb-3 group-hover:bg-indigo-200 transition-colors">
+                {tool.icon}
+              </div>
+              <h3 className="font-semibold text-neutral-900 mb-1">{tool.title}</h3>
+              <p className="text-sm text-neutral-600">{tool.description}</p>
+            </Link>
+          ))}
+          {/* Hier kannst du einfach weitere Tools zur TOOLS_CONFIG-Liste hinzufügen */}
+          <div className="p-5 border border-dashed border-neutral-300 rounded-xl flex flex-col items-center justify-center text-center bg-neutral-50/70">
+             <div className="h-10 w-10 rounded-lg bg-neutral-200 text-neutral-500 flex items-center justify-center mb-3">
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-6 h-6">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m6-6H6" />
+              </svg>
+             </div>
+             <h3 className="font-semibold text-neutral-700 mb-1 text-sm">Neues Werkzeug</h3>
+             <p className="text-xs text-neutral-500">Weitere Tools folgen in Kürze...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
+// ===== Sub-Komponenten (SidebarChatList & MessageBubble bleiben unverändert) =====
 function SidebarChatList({
   chats, activeChatId, onSelect, onDelete, onRename, onMoveProject, projectFilter,
 }: {
@@ -580,8 +734,7 @@ function SidebarChatList({
             {items.map((c) => {
               const isActive = activeChatId === c.id;
               return (
-                <li key={c.id}> {/* --- FEINSCHLIFF: Keine Hover-Border mehr --- */}
-                  {/* --- FEINSCHLIFF: Aktiver Chat bekommt dunkleren Hintergrund --- */}
+                <li key={c.id}>
                   <div className={cls('flex items-center gap-1 px-2 py-1.5 rounded-lg', isActive ? 'bg-neutral-200' : 'hover:bg-neutral-200/60')}>
                     {editingId === c.id ? (
                       <input
@@ -609,7 +762,6 @@ function SidebarChatList({
                         <div className="text-[11px] text-neutral-500">{c.model}</div>
                       </button>
                     )}
-                    {/* --- FEINSCHLIFF: Icons bekommen besseren Hover --- */}
                     <button
                       onClick={() => setEditingId(prev => prev === c.id ? null : c.id)}
                       className={cls("h-7 w-7 flex-shrink-0 inline-flex items-center justify-center rounded-md border border-transparent text-neutral-500 hover:text-neutral-900", isActive ? "hover:bg-neutral-300" : "hover:bg-neutral-200")}
@@ -627,7 +779,7 @@ function SidebarChatList({
                       aria-label="Projekt ändern"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.188l.003.174a2.25 2.25 0 0 0 1.883 2.188c.112.017.227.026.344.026h15.812c.117 0 .232-.009.344-.026a2.25 2.25 0 0 0 1.883-2.188l-.003-.174a2.25 2.25 0 0 0-1.883-2.188m-16.5 0c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344-.026m0 0C21.66 9.713 22.5 8.288 22.5 6.75c0-1.538-.84-2.963-2.094-3.69M3.75 9.776c.112-.017.227-.026.344-.026M3.75 9.776c-.112.017-.227.026-.344-.026C2.34 9.713 1.5 8.288 1.5 6.75c0-1.538.84-2.963 2.094-3.69m0 0C2.34 3.037 3.75 3 5.25 3h13.5c1.5 0 2.91.037 3.906.31" />
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 9.776c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m-16.5 0a2.25 2.25 0 0 0-1.883 2.188l.003.174a2.25 2.25 0 0 0 1.883 2.188c.112.017.227.026.344.026h15.812c.117 0 .232-.009.344.026a2.25 2.25 0 0 0 1.883-2.188l-.003-.174a2.25 2.25 0 0 0-1.883-2.188m-16.5 0c.112-.017.227-.026.344-.026h15.812c.117 0 .232.009.344.026m0 0C21.66 9.713 22.5 8.288 22.5 6.75c0-1.538-.84-2.963-2.094-3.69M3.75 9.776c.112-.017.227-.026.344-.026M3.75 9.776c-.112.017-.227.026-.344-.026C2.34 9.713 1.5 8.288 1.5 6.75c0-1.538.84-2.963 2.094-3.69m0 0C2.34 3.037 3.75 3 5.25 3h13.5c1.5 0 2.91.037 3.906.31" />
                       </svg>
                     </button>
                     <button
@@ -648,13 +800,15 @@ function SidebarChatList({
         </div>
       ))}
       {grouped.length === 0 && (
-        <div className="px-3 py-2 text-sm text-neutral-500">Keine Chats</div>
+        <div className="px-3 py-2 text-sm text-neutral-500">
+          Noch keine Chats. Starte einen <button onClick={() => onSelect('NEW')} className="underline">neuen Chat</button> oder wähle ein Werkzeug.
+        </div>
       )}
     </div>
   );
 }
 
-// ===== Sub-Komponente: MessageBubble (Farben & Lesbarkeit angepasst) =====
+// ===== Sub-Komponente: MessageBubble (unverändert) =====
 function MessageBubble({
   message, onCopy, onEdit, isStreaming, grouped,
 }: {
@@ -686,7 +840,6 @@ function MessageBubble({
       <div className={cls('group', 'max-w-[90%]')}>
         {!grouped && (
           <div className={cls('mb-1.5 px-1 flex items-center gap-2', isUser ? 'justify-end' : 'justify-start')}>
-            {/* --- FEINSCHLIFF: Dunklerer Text für Label --- */}
             <div className="text-[11px] font-medium text-neutral-700">{isUser ? 'Du' : 'Assistant'}</div>
             <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-2">
               {onEdit && <button onClick={onEdit} className="text-[11px] underline text-neutral-600 hover:text-neutral-900">Bearbeiten</button>}
@@ -706,7 +859,6 @@ function MessageBubble({
           <div className={cls('rounded-2xl px-3.5 py-2.5 break-words', 'bg-neutral-100 border border-neutral-200')}>
             <div
               className={cls(
-                // --- FEINSCHLIFF: Dunklerer Text & Links für Assistant ---
                 'prose prose-sm sm:prose-base prose-neutral text-neutral-800 prose-a:text-indigo-600 prose-strong:text-neutral-900',
                 'prose-headings:font-semibold prose-headings:text-neutral-900 prose-h1:text-xl prose-h2:text-lg prose-h3:text-base',
                 'prose-p:leading-relaxed',
