@@ -4,7 +4,7 @@
 
 git add . 
 
-git commit -m "prompt social media Änderung" 
+git commit -m "prompt marketing Änderung" 
 
 git push 
 
