@@ -4,8 +4,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 
-const STRIPE_CHECKOUT_URL = "https://buy.stripe.com/6oU6oI6vW2jLfrudeJawo04";
-const OWNER_EMAIL = "hello@sinispace.app"; // <-- deine Empfangsadresse
+const STRIPE_CHECKOUT_URL = "https://buy.stripe.com/bJe3cw3jKcYpenq7Upawo06";
+const OWNER_EMAIL = "kontakt@sinispace.app"; // <-- deine Empfangsadresse
 
 export default function PaymentPage() {
   const [name, setName] = useState("");

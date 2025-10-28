@@ -4,7 +4,7 @@
 
 git add . 
 
-git commit -m "prompt Werkzeuge Änderung" 
+git commit -m "änderung zahlung" 
 
 git push 
 
