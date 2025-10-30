@@ -313,15 +313,41 @@ export default function ChatPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
             </svg>
           </button>
-          <button
-            onClick={() => setActiveChatId(null)}
-            className="flex items-center gap-2 min-w-0"
-            title="Zurück zum Hub"
-            disabled={!activeChatId} 
-          >
-            <div className="h-5 w-5 shrink-0 rounded bg-neutral-900" />
-            <span className="text-sm font-semibold tracking-wide truncate">Dashboard</span>
-          </button>
+          {/* ===== NEUE LOGIK FÜR HUB-NAVIGATION (LOGO / HAUS-ICON) ===== */}
+          {!activeChatId ? (
+            // ----- WENN IM HUB: Zeige "SiniSpace" (nicht klickbar) -----
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-5 w-5 shrink-0 rounded bg-neutral-900" />
+              <span className="text-sm font-semibold tracking-wide truncate">Dashboard</span>
+            </div>
+          ) : (
+            // ----- WENN IM CHAT: Zeige Logo auf Desktop, Haus-Icon auf Mobil -----
+            <>
+              {/* 1. "SiniSpace" Logo/Text (nur Desktop) -> Klickt zum Hub */}
+              <button
+                onClick={() => setActiveChatId(null)}
+                className="hidden lg:flex items-center gap-2 min-w-0"
+                title="Zurück zum Hub"
+              >
+                <div className="h-5 w-5 shrink-0 rounded bg-neutral-900" />
+                <span className="text-sm font-semibold tracking-wide truncate">Dashboard</span>
+              </button>
+
+              {/* 2. "Haus" Icon (nur Mobil) -> Klickt zum Hub */}
+              <button
+                onClick={() => setActiveChatId(null)}
+                className="lg:hidden inline-flex h-9 w-9 items-center justify-center rounded-lg border border-neutral-300 hover:bg-neutral-100"
+                title="Zurück zum Hub"
+                aria-label="Zurück zum Hub"
+              >
+                {/* Das SVG für das Haus-Icon */}
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                </svg>
+              </button>
+            </>
+          )}
+          {/* ===== ENDE DER NEUEN LOGIK ===== */}
           <div className="ml-auto flex items-center gap-2">
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}

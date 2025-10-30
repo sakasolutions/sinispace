@@ -4,7 +4,7 @@
 
 git add . 
 
-git commit -m "änderung hub" 
+git commit -m "änderung dashboard" 
 
 git push 
 
