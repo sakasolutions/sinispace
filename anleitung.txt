@@ -4,7 +4,7 @@
 
 git add . 
 
-git commit -m "änderung zahlung" 
+git commit -m "änderung hub" 
 
 git push 
 

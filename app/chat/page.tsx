@@ -385,11 +385,26 @@ export default function ChatPage() {
 
       {/* Body */}
       <div className="mx-auto max-w-7xl h-[calc(100dvh-3rem)] sm:h-[calc(100dvh-3.5rem)] grid grid-cols-1 lg:grid-cols-[300px_1fr]">
-        <aside className="hidden lg:flex h-full border-r border-neutral-200 flex-col overflow-hidden bg-neutral-100">
+      <aside className="hidden lg:flex h-full border-r border-neutral-200 flex-col overflow-hidden bg-neutral-100">
           <div className="p-3 flex items-center gap-2 border-b border-neutral-200">
+            {/* ===== NEUER HUB-BUTTON ===== */}
+            <button
+              onClick={() => setActiveChatId(null)}
+              className={cls(
+                "inline-flex h-8 w-8 items-center justify-center rounded-md border border-neutral-300 bg-white hover:bg-neutral-200",
+                !activeChatId && "bg-neutral-200" // Aktiven Zustand hervorheben
+              )}
+              title="Zum Hub"
+              aria-label="Zum Hub"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-4 w-4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+              </svg>
+            </button>
+            {/* ===== Angepasster "Neu"-Button ===== */}
             <button
               onClick={() => handleNewChat()}
-              className="px-2 py-1 rounded-md text-sm border border-neutral-300 bg-white hover:bg-neutral-200"
+              className="px-3 py-1.5 rounded-md text-sm border border-neutral-300 bg-white hover:bg-neutral-200"
               aria-label="Neuen Chat erstellen"
             >
               + Neu
@@ -437,7 +452,27 @@ export default function ChatPage() {
                 </button>
               </div>
               <div className="p-3 flex items-center gap-2">
-                <button onClick={() => { setSidebarOpen(false); handleNewChat(); }} className="w-full rounded-lg bg-neutral-900 text-white px-3 py-2 text-sm font-medium hover:opacity-90">+ Neuer Chat</button>
+                {/* ===== NEUER HUB-BUTTON ===== */}
+                <button
+                  onClick={() => { setSidebarOpen(false); setActiveChatId(null); }}
+                  className={cls(
+                    "inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-neutral-300 bg-white hover:bg-neutral-100",
+                    !activeChatId && "bg-neutral-200" // Aktiven Zustand hervorheben
+                  )}
+                  title="Zum Hub"
+                  aria-label="Zum Hub"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="m2.25 12 8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25" />
+                  </svg>
+                </button>
+                {/* ===== Angepasster "Neuer Chat"-Button ===== */}
+                <button 
+                  onClick={() => { setSidebarOpen(false); handleNewChat(); }} 
+                  className="flex-1 rounded-lg bg-neutral-900 text-white px-3 py-2 text-sm font-medium hover:opacity-90"
+                >
+                  + Neuer Chat
+                </button>
               </div>
               <div className="px-3 pb-2">
                 <select
