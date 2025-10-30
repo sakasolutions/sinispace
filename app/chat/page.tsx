@@ -320,7 +320,7 @@ export default function ChatPage() {
             disabled={!activeChatId} 
           >
             <div className="h-5 w-5 shrink-0 rounded bg-neutral-900" />
-            <span className="text-sm font-semibold tracking-wide truncate">SiniSpace</span>
+            <span className="text-sm font-semibold tracking-wide truncate">Dashboard</span>
           </button>
           <div className="ml-auto flex items-center gap-2">
             <button
