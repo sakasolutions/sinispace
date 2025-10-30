@@ -313,10 +313,15 @@ export default function ChatPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
             </svg>
           </button>
-          <div className="flex items-center gap-2 min-w-0">
+          <button
+            onClick={() => setActiveChatId(null)}
+            className="flex items-center gap-2 min-w-0"
+            title="Zurück zum Hub"
+            disabled={!activeChatId} 
+          >
             <div className="h-5 w-5 shrink-0 rounded bg-neutral-900" />
             <span className="text-sm font-semibold tracking-wide truncate">SiniSpace</span>
-          </div>
+          </button>
           <div className="ml-auto flex items-center gap-2">
             <button
               onClick={() => signOut({ callbackUrl: '/login' })}
