@@ -12,8 +12,7 @@ const inputSchema = z.object({
   emailType: z.enum(['anfrage', 'angebot', 'follow-up', 'beschwerde', 'danksagung']),
 });
 
-// --- NEU: Ausgabe-Validierung (AI -> Server) ---
-// Wir definieren, wie die JSON-Antwort der KI aussehen MUSS.
+// --- Ausgabe-Validierung (AI -> Server) ---
 const outputSchema = z.object({
   email: z.object({
     subject: z.string().min(1, 'Betreff fehlt'),
@@ -48,7 +47,7 @@ export async function POST(req: NextRequest) {
       emailType 
     } = validation.data;
 
-    // 2. Der spezialisierte System-Prompt
+    // 2. Der spezialisierte System-Prompt (MIT ÄNDERUNG)
     const systemPrompt = `Du bist ein professioneller Kommunikationsassistent (für SiniSpace). 
 Deine Aufgabe ist es, einen E-Mail-Entwurf (Betreff und Textkörper) zu erstellen.
 
@@ -63,6 +62,9 @@ Deine Aufgabe ist es, einen E-Mail-Entwurf (Betreff und Textkörper) zu erstelle
     * Falls Stichpunkte sinnvoll sind, verwende Markdown-Listen.
     * Die Tonalität muss **${tone}** sein.
     * Der Typ der E-Mail ist **${emailType}**.
+    
+    // +++ HIER DIE NEUE REGEL +++
+4.  **WICHTIGE STIL-REGEL:** Beginne E-Mails direkt und modern. Vermeide UNBEDINGT veraltete, steife Floskeln wie "ich hoffe, diese Nachricht trifft Sie wohl", "ich hoffe, es geht Ihnen gut" oder ähnliches. Gehe direkt zur Sache oder starte mit einem klaren Bezugspunkt.
 
 **Beispiel-Output:**
 {
@@ -97,21 +99,16 @@ Deine Aufgabe ist es, einen E-Mail-Entwurf (Betreff und Textkörper) zu erstelle
       throw new Error('Leere Antwort von der KI erhalten.');
     }
 
-    // 4. Antwort parsen UND mit Zod validieren (KORRIGIERTER TEIL)
-    const parsedJson = JSON.parse(content); // Ergibt Typ 'any'
-    
-    // Wir zwingen 'any' durch unser Schema. Bei Erfolg ist 'data' typsicher!
+    // 4. Antwort parsen UND mit Zod validieren
+    const parsedJson = JSON.parse(content);
     const outputValidation = outputSchema.safeParse(parsedJson);
 
     if (!outputValidation.success) {
       console.error("KI-Antwort entsprach nicht der Zod-Struktur:", outputValidation.error.flatten());
-      // Logge, was die KI stattdessen gesendet hat
       console.error("Empfangene Daten von KI:", content); 
       throw new Error('Die KI hat eine unerwartete Datenstruktur geliefert.');
     }
 
-    // 'outputValidation.data' ist jetzt typsicher (Typ: { email: { subject: string, body: string } })
-    // Das Frontend erwartet { email: { ... } }
     return NextResponse.json(outputValidation.data); 
 
   } catch (error: any) {

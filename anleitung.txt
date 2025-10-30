@@ -4,7 +4,7 @@
 
 git add . 
 
-git commit -m "änderung dashboard" 
+git commit -m "änderung email" 
 
 git push 
 
