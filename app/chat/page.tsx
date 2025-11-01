@@ -816,7 +816,6 @@ function SidebarChatList({
                         title={c._name}
                       >
                         <div className="text-sm font-medium truncate">{c._name}</div>
-                        
                       </button>
                     )}
                     <button
