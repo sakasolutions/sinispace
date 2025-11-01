@@ -864,6 +864,7 @@ function SidebarChatList({
   );
 }
 
+
 // ===== Sub-Komponente: MessageBubble (unverändert) =====
 function MessageBubble({
   message, onCopy, onEdit, isStreaming, grouped,
