@@ -381,7 +381,7 @@ export default function ChatPage() {
                 >
                   <option value="gpt-4o">GPT-4o (Stark)</option>
                   <option value="gpt-4o-mini">GPT-4o-mini (Schnell)</option>
-                  <option value="gemini-2.5-pro">Gemini 2.5 Pro (Aktuell)</option>
+                  <option value="gemini-1.5-pro">Gemini 2.5 Pro (Aktuell)</option>
                 </select>
                 {isStreaming ? (
                   <button onClick={handleStop} className="rounded-lg border border-neutral-300 bg-white px-2 sm:px-3 py-1.5 text-xs sm:text-sm hover:bg-neutral-100">

@@ -12,8 +12,7 @@ git push
 
 
 
-Bursaspor_16
- (Auf dem Server einloggen)
+ssh sinan@152.53.20.42 (Auf dem Server einloggen)
 
 cd /home/sinan/sinispace (In den Projektordner wechseln)
 

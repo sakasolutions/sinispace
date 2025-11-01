@@ -4,12 +4,13 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 
 // --- Eingabe-Validierung (Frontend -> Server) ---
+// +++ KORREKTUR: 'angebot' entfernt, da es ein eigenes Szenario wird +++
 const inputSchema = z.object({
   recipientContext: z.string().min(3, 'Empfänger-Kontext ist zu kurz'),
   goal: z.string().min(5, 'Das Ziel der E-Mail ist zu kurz'),
   keyPoints: z.string().optional(), // Stichpunkte sind optional
   tone: z.enum(['formell', 'freundlich', 'direkt', 'überzeugend', 'dringend']),
-  emailType: z.enum(['anfrage', 'angebot', 'follow-up', 'beschwerde', 'danksagung']),
+  emailType: z.enum(['anfrage', 'follow-up', 'beschwerde', 'danksagung']), // 'angebot' entfernt
 });
 
 // --- Ausgabe-Validierung (AI -> Server) ---
@@ -63,7 +64,6 @@ Deine Aufgabe ist es, einen E-Mail-Entwurf (Betreff und Textkörper) zu erstelle
     * Die Tonalität muss **${tone}** sein.
     * Der Typ der E-Mail ist **${emailType}**.
     
-    // +++ HIER DIE NEUE REGEL +++
 4.  **WICHTIGE STIL-REGEL:** Beginne E-Mails direkt und modern. Vermeide UNBEDINGT veraltete, steife Floskeln wie "ich hoffe, diese Nachricht trifft Sie wohl", "ich hoffe, es geht Ihnen gut" oder ähnliches. Gehe direkt zur Sache oder starte mit einem klaren Bezugspunkt.
 
 **Beispiel-Output:**

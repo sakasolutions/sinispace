@@ -226,40 +226,34 @@ export async function POST(req: Request, ctx: any) {
     let assistantText = '';
     const imageUrls = extractImageUrls(last.content);
 
-    // --- "Modell-Kaskade" Logik (unverändert) ---
+  // --- NEUE "SMART ROUTER" LOGIK (OpenAI-Fallback) ---
+    // Diese Logik nutzt NUR OpenAI, da Gemini für dieses Konto gesperrt ist.
+    // Sie entscheidet bei JEDER Nachricht neu.
+
     let systemPrompt: string;
     let chosenModel: string;
-    let effectiveModelLevel = chat.modelLevel as 'simple' | 'pro';
-    let isNewProjectOffer = false;
 
-    const preferredProModel = (body.model ?? chat.model) as string;
+    console.log(`[SMART ROUTER] Prüfe Intent für: "${last.content.substring(0, 40)}..."`);
+    const intent = await runPreflightCheck(last.content);
 
-    if (effectiveModelLevel === 'pro') {
-      console.log(`🚀 [PRO CHAT] Modell: ${preferredProModel}`);
-      systemPrompt = PRO_ROUTER_SYSTEM_PROMPT; // Benutzt den NEUEN Pro-Prompt
-      chosenModel = preferredProModel;
-
+    if (intent === 'PROJECT') {
+      // "PRO"-PFAD: Bewusster TEST von Gemini
+      chosenModel = 'gemini-2.5-pro'; // <-- HIER ÄNDERN ZUM TESTEN
+      systemPrompt = PRO_ROUTER_SYSTEM_PROMPT;
+      console.log(`🚀 [GEMINI-TEST -> PROJECT] Nutze Pro-Modell: ${chosenModel}`);
+        
     } else {
-      console.log(`[PREFLIGHT] Prüfe Intent für: "${last.content.substring(0, 40)}..."`);
-      const intent = await runPreflightCheck(last.content);
-
-      if (intent === 'PROJECT') {
-        console.log(`🚀 [PREFLIGHT -> PROJECT] Upgrade auf Pro-Modell: ${preferredProModel}`);
-        effectiveModelLevel = 'pro';
-        systemPrompt = PRO_ROUTER_SYSTEM_PROMPT; // Benutzt den NEUEN Pro-Prompt
-        chosenModel = preferredProModel;
-        isNewProjectOffer = true;
-
-      } else {
-        const simpleModel = preferredProModel.startsWith('gemini') ? 'gemini-1.5-flash-latest' : 'gpt-4o-mini';
-        console.log(`🚀 [PREFLIGHT -> SIMPLE] Nutze günstiges Modell: ${simpleModel}`);
-        effectiveModelLevel = 'simple';
+        // "SIMPLE"-PFAD: Nutze das günstigste Modell von OpenAI
+        chosenModel = 'gpt-4o-mini';
         systemPrompt = SIMPLE_SYSTEM_PROMPT;
-        chosenModel = simpleModel;
-      }
+        console.log(`🚀 [ROUTER -> SIMPLE] Nutze günstiges Modell: ${chosenModel}`);
     }
-    // --- ENDE KASKADEN-LOGIK ---
+    
+    const isNewProjectOffer = false; 
+    // --- ENDE "SMART ROUTER" LOGIK ---
 
+    // +++ `finalModelName` hier definieren, damit `catch` darauf zugreifen kann +++
+    let finalModelName = chosenModel;
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -283,7 +277,7 @@ Bitte überarbeite deine eigene Antwort während des Schreibens:
 `;
 
           if (chosenModel.startsWith('gpt')) {
-            // ------------ OpenAI (GPT-4o/mini) ------------
+            // ------------ OpenAI (GPT-4o/mini) --- (UNVERÄNDERT) ---
             console.log(`🚀 [OpenAI Stream] Effektives Modell: ${chosenModel}`);
 
             const parts: any[] = [{
@@ -312,7 +306,7 @@ Bitte überarbeite deine eigene Antwort während des Schreibens:
             const completion = await openai.chat.completions.create({
               model: chosenModel as any,
               stream: true,
-              ...OPENAI_GEN, // Benutzt die NEUE Temperatur
+              ...OPENAI_GEN,
               messages: openaiMessages,
             });
 
@@ -327,21 +321,32 @@ Bitte überarbeite deine eigene Antwort während des Schreibens:
             // Refine-Pass...
 
           } else {
-            // ------------ Gemini (Vertex AI) ------------
-            console.log(`🚀 [Gemini Stream] Effektives Modell: ${chosenModel}`);
+            // +++ KORRIGIERTER Gemini (Vertex AI) Block +++
+            console.log(`🚀 [Gemini/Vertex Stream] Effektives Modell: ${chosenModel}`);
 
             const vertex_ai = new VertexAI({
-              project: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
-              location: 'us-central1',
+              project: process.env.GOOGLE_PROJECT_ID || process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '',
+              location: 'us-central1', // <-- ZURÜCK ZUM STANDARD
             });
+            
+            // +++ Modell-Namen-Übersetzung (WICHTIG!) +++
+            if (chosenModel === 'gemini-2.5-pro' || chosenModel === 'gemini-1.5-pro') {
+              finalModelName = 'gemini-1.5-pro-latest'; 
+            }
+            if (chosenModel === 'gemini-pro') {
+                finalModelName = 'gemini-1.0-pro';
+            }
+            console.log(`[Vertex Mapping] Frontend: "${chosenModel}" -> Vertex: "${finalModelName}"`);
+
 
             const model = vertex_ai.getGenerativeModel({
-              model: chosenModel,
+              model: finalModelName,
+              // +++ KORREKTUR: Zurück zum String-Format, das deine Lib erwartet +++
               systemInstruction: systemPrompt,
             });
 
             const history = body.messages.slice(0, -1).map((m) => ({
-              role: m.role === 'assistant' ? 'model' : 'user', // Korrigiert
+              role: m.role === 'assistant' ? 'model' : 'user', // Korrekt
               parts: [{ text: m.content ?? '' }],
             }));
 
@@ -358,7 +363,7 @@ Bitte überarbeite deine eigene Antwort während des Schreibens:
 
             const chatSession = model.startChat({
               history,
-              generationConfig: GEMINI_GEN, // Benutzt die NEUE Temperatur
+              generationConfig: GEMINI_GEN,
             });
 
             const result = await chatSession.sendMessageStream(userParts);
@@ -370,9 +375,7 @@ Bitte überarbeite deine eigene Antwort während des Schreibens:
                 send({ type: 'delta', text: delta });
               }
             }
-
-            // Refine-Pass...
-
+            // --- ENDE KORREKTURBLOCK ---
           }
 
           // Antwort speichern
@@ -388,9 +391,25 @@ Bitte überarbeite deine eigene Antwort während des Schreibens:
           send({ type: 'usage', usage: {} });
           send({ type: 'done' });
           controller.close();
-        } catch (err) {
-          console.error('stream error:', err);
-          const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+
+        } catch (err: any) { // +++ KORREKTUR: Detailliertes Error Handling für Vertex +++
+          console.error("!!! FATALER STREAM-FEHLER !!!");
+          console.error("Fehler-Objekt:", err);
+          console.error("Fehler-Nachricht:", err.message);
+          
+          let errorMessage = err.message || 'An unknown error occurred';
+          
+          // Spezifische Vertex/GCP-Fehler abfangen
+          if (err.message?.includes("does not exist") || err.message?.includes("GetModel")) {
+              errorMessage = `Modell "${finalModelName}" (gemappt von "${chosenModel}") nicht gefunden oder nicht für dieses Projekt aktiviert.`;
+          } else if (err.message?.includes("Quota") || err.message?.includes("rate limit")) {
+              errorMessage = `API-Limit (Quota) überschritten. Bitte prüfe dein Google Cloud-Konto.`;
+          } else if (err.message?.includes("Billing account") || err.message?.includes("project is not linked") || err.message?.includes("API has not been used")) {
+              errorMessage = `Abrechnungs- oder API-Problem. Stelle sicher, dass die "Vertex AI API" im Projekt aktiviert UND mit einem aktiven Abrechnungskonto verknüpft ist.`;
+          } else if (err.message?.includes("permission denied") || err.message?.includes("credentials")) {
+              errorMessage = `Authentifizierungsfehler. Stelle sicher, dass die "Application Default Credentials" (ADC) korrekt konfiguriert sind (z.B. gcloud auth application-default login) oder der Service Account die Rolle "Vertex AI User" hat.`;
+          }
+
           send({ type: 'error', message: `API Fehler: ${errorMessage}` });
           controller.error(err);
         }

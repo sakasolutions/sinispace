@@ -18,7 +18,8 @@ const copyText = async (text: string) => {
 
 // --- Typen für dieses Werkzeug ---
 type EmailTone = 'formell' | 'freundlich' | 'direkt' | 'überzeugend' | 'dringend';
-type EmailType = 'anfrage' | 'angebot' | 'follow-up' | 'beschwerde' | 'danksagung';
+// +++ KORREKTUR: 'angebot' wird hier nicht mehr benötigt, da Backend es nicht mehr erwartet +++
+type EmailType = 'anfrage' | 'follow-up' | 'beschwerde' | 'danksagung';
 
 // Das ist die "interne" Form, die an die API gesendet wird
 interface ApiFormData {
@@ -45,7 +46,8 @@ type Scenario =
   | 'followup'
   | 'bitte'
   | 'beschwerde'
-  | 'danke' // +++ NEU +++
+  | 'danke'
+  | 'angebot-anfragen' // +++ NEU (Idiotensicher für LVM-Problem) +++
   | 'sonstiges';
 
 // +++ ANGEPASST: State für die vereinfachten Formulare +++
@@ -63,18 +65,22 @@ interface SimpleFormData {
   beschwerdeAnWen: 'firma' | 'kollege' | 'dienstleister';
   beschwerdeWas: string;
   beschwerdeForderung: string;
-
-  // +++ NEU: Szenario 'danke' +++
   dankeAnWen: 'formell-sie' | 'informell-du';
-  dankeWofuer: string; // Wofür?
-  dankeKontext: string; // Optionale vorherige E-Mail
+  dankeWofuer: string;
+  dankeKontext: string;
+
+  // +++ NEU: Szenario 'angebot-anfragen' +++
+  angebotAnWen: string;  // z.B. "Firma LVM", "Herr Müller"
+  angebotWofuer: string; // z.B. "Eine Lebensversicherung"
+  angebotFuerWen: string;  // z.B. "meinen Kunden, Herrn Wolfgang Nessner" (optional)
+  angebotAnsprache: 'sie' | 'du';
 
   // Szenario 'sonstiges' (das alte, volle Formular)
   sonstigesRecipientContext: string;
   sonstigesGoal: string;
   sonstigesKeyPoints: string;
   sonstigesTone: EmailTone;
-  sonstigesEmailType: EmailType;
+  sonstigesEmailType: EmailType; // Wird jetzt nur noch 'anfrage' sein
   sonstigesAnsprache: 'sie' | 'du';
 }
 
@@ -98,9 +104,14 @@ export default function EmailAssistantPage() {
     beschwerdeAnWen: 'firma',
     beschwerdeWas: '',
     beschwerdeForderung: '',
-    dankeAnWen: 'formell-sie', // +++ NEU +++
-    dankeWofuer: '', // +++ NEU +++
-    dankeKontext: '', // +++ NEU +++
+    dankeAnWen: 'formell-sie',
+    dankeWofuer: '',
+    dankeKontext: '',
+    // +++ NEU +++
+    angebotAnWen: '',
+    angebotWofuer: '',
+    angebotFuerWen: '',
+    angebotAnsprache: 'sie',
     // "Sonstiges"
     sonstigesRecipientContext: '',
     sonstigesGoal: '',
@@ -236,7 +247,6 @@ export default function EmailAssistantPage() {
           emailType: 'beschwerde',
         };
 
-      // +++ NEU: Szenario 'danke' +++
       case 'danke':
         const dankeAnsprache = simpleForm.dankeAnWen === 'formell-sie' ? 'sie' : 'du';
         const dankeContext =
@@ -254,6 +264,22 @@ export default function EmailAssistantPage() {
           }`,
           tone: dankeTone,
           emailType: 'danksagung',
+        };
+
+      // +++ NEU: Szenario 'angebot-anfragen' (Löst das LVM-Problem) +++
+      case 'angebot-anfragen':
+        const angebotAnsprache = simpleForm.angebotAnsprache;
+        const fuerWenText = simpleForm.angebotFuerWen
+          ? `Das Angebot ist für: ${simpleForm.angebotFuerWen}.`
+          : 'Das Angebot ist für mich selbst.';
+          
+        return {
+          recipientContext: `Ein Dienstleister oder eine Firma, kontaktiert bei: ${simpleForm.angebotAnWen}`,
+          goal: `Eine formelle Anfrage für ein Angebot ${anspracheText(angebotAnsprache)}`,
+          keyPoints: `Ich bitte um ein Angebot für folgendes: ${simpleForm.angebotWofuer}.
+${fuerWenText}`,
+          tone: 'formell', // Angebotsanfragen sind fast immer formell
+          emailType: 'anfrage', // Es ist eine 'anfrage' im Backend
         };
 
       case 'sonstiges':
@@ -420,6 +446,13 @@ export default function EmailAssistantPage() {
           onClick={() => handleSelectScenario('termin')}
           icon="calendar"
         />
+        {/* +++ NEU: Angebots-Button +++ */}
+        <ScenarioButton
+          title="Angebot anfragen"
+          description="Ein Angebot von einer Firma oder Dienstleister einholen."
+          onClick={() => handleSelectScenario('angebot-anfragen')}
+          icon="tag"
+        />
         <ScenarioButton
           title="Nachfassen (Follow-Up)"
           description="Höflich an eine Antwort oder ein Angebot erinnern."
@@ -438,7 +471,6 @@ export default function EmailAssistantPage() {
           onClick={() => handleSelectScenario('beschwerde')}
           icon="complaint"
         />
-        {/* +++ NEU: Danke-Button +++ */}
         <ScenarioButton
           title="Danke sagen"
           description="Eine Danksagung für Hilfe, ein Meeting oder eine Info."
@@ -475,6 +507,9 @@ export default function EmailAssistantPage() {
           return simpleForm.beschwerdeWas.trim() !== '';
         case 'danke':
           return simpleForm.dankeWofuer.trim() !== '';
+        // +++ NEU: Validierung für Angebot +++
+        case 'angebot-anfragen':
+          return simpleForm.angebotAnWen.trim() !== '' && simpleForm.angebotWofuer.trim() !== '';
         case 'sonstiges':
           return (
             simpleForm.sonstigesRecipientContext.trim() !== '' &&
@@ -732,7 +767,7 @@ export default function EmailAssistantPage() {
           </div>
         )}
 
-        {/* +++ NEU: RENDER: Szenario "Danke sagen" +++ */}
+        {/* --- RENDER: Szenario "Danke sagen" --- */}
         {scenario === 'danke' && (
           <div className="space-y-6">
             <h1 className="text-2xl sm:text-3xl font-semibold text-neutral-900 mb-2">
@@ -774,6 +809,57 @@ export default function EmailAssistantPage() {
           </div>
         )}
 
+        {/* +++ NEU: RENDER: Szenario "Angebot anfragen" +++ */}
+        {scenario === 'angebot-anfragen' && (
+          <div className="space-y-6">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-neutral-900 mb-2">
+              Angebot anfragen
+            </h1>
+            <p className="text-sm sm:text-base text-neutral-600 -mt-2 mb-6">
+              Hole ein Angebot von einer Firma oder einem Dienstleister ein.
+            </p>
+            <ToolSelect
+              label="Ansprache"
+              id="angebotAnsprache"
+              name="angebotAnsprache"
+              value={simpleForm.angebotAnsprache}
+              onChange={handleSimpleFormChange}
+              options={[
+                { value: 'sie', label: 'Formell (Sie)' },
+                { value: 'du', label: 'Informell (Du)' },
+              ]}
+            />
+            <ToolInput
+              label="An wen richtet sich die Anfrage?"
+              id="angebotAnWen"
+              name="angebotAnWen"
+              value={simpleForm.angebotAnWen}
+              onChange={handleSimpleFormChange}
+              placeholder="z.B. Firma Mustermann, service@lvm.de, Herr Müller"
+              required
+            />
+            <ToolTextarea
+              label="Wofür genau brauchst du ein Angebot?"
+              id="angebotWofuer"
+              name="angebotWofuer"
+              value={simpleForm.angebotWofuer}
+              onChange={handleSimpleFormChange}
+              placeholder="z.B. Eine Lebensversicherung / 10 Lizenzen für Software X"
+              rows={3}
+              required
+            />
+            <ToolTextarea
+              label="Für wen ist das Angebot? (Optional)"
+              id="angebotFuerWen"
+              name="angebotFuerWen"
+              value={simpleForm.angebotFuerWen}
+              onChange={handleSimpleFormChange}
+              placeholder="z.B. Meinen Kunden, Herrn Wolfgang Nessner / (Leer lassen, wenn für dich)"
+              rows={2}
+            />
+          </div>
+        )}
+
         {/* --- RENDER: Szenario "Sonstiges" --- */}
         {scenario === 'sonstiges' && (
           <div className="space-y-6">
@@ -784,7 +870,7 @@ export default function EmailAssistantPage() {
               Stelle alle Parameter selbst ein.
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-              {/* +++ KORRIGIERT: Gekürzte Liste (Danke auch entfernt) +++ */}
+              {/* +++ KORRIGIERT: Gekürzte Liste (Angebot entfernt) +++ */}
               <ToolSelect
                 label="Art der E-Mail"
                 id="sonstigesEmailType"
@@ -793,7 +879,7 @@ export default function EmailAssistantPage() {
                 onChange={handleSimpleFormChange}
                 options={[
                   { value: 'anfrage', label: 'Allgemeine Anfrage' },
-                  { value: 'angebot', label: 'Angebot / Vorschlag' },
+                  // 'angebot' ist jetzt ein eigener Button
                 ]}
               />
               <ToolSelect
@@ -1153,13 +1239,19 @@ const ScenarioButton = ({
         d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.008v.008H12v-.008Z"
       />
     ),
-    // +++ NEUES ICON +++
     heart: (
       <path
         strokeLinecap="round"
         strokeLinejoin="round"
         d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.099 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z"
       />
+    ),
+    // +++ NEUES ICON FÜR ANGEBOT +++
+    tag: (
+      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5">
+        <path strokeLinecap="round" strokeLinejoin="round" d="M9.568 3H5.25A2.25 2.25 0 003 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 005.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 009.568 3z" />
+        <path strokeLinecap="round" strokeLinejoin="round" d="M6 6h.008v.008H6V6z" />
+      </svg>
     ),
     manual: (
       <path
