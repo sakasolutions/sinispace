@@ -373,16 +373,7 @@ export default function ChatPage() {
             {/* Header-Buttons werden nur angezeigt, wenn ein Chat aktiv ist */}
             {activeChat && (
               <>
-                <select
-                  className="max-w-[44vw] sm:max-w-none text-xs sm:text-sm rounded-lg border border-neutral-300 bg-white px-2 py-1.5 outline-none hover:bg-neutral-100 truncate"
-                  value={activeChat.model}
-                  onChange={(e) => patchChatModel(e.target.value as Model)}
-                  aria-label="KI-Modell wählen"
-                >
-                  <option value="gpt-4o">GPT-4o (Stark)</option>
-                  <option value="gpt-4o-mini">GPT-4o-mini (Schnell)</option>
-                  <option value="gemini-1.5-pro">Gemini 2.5 Pro (Aktuell)</option>
-                </select>
+                
                 {isStreaming ? (
                   <button onClick={handleStop} className="rounded-lg border border-neutral-300 bg-white px-2 sm:px-3 py-1.5 text-xs sm:text-sm hover:bg-neutral-100">
                     Stop
@@ -825,7 +816,7 @@ function SidebarChatList({
                         title={c._name}
                       >
                         <div className="text-sm font-medium truncate">{c._name}</div>
-                        <div className="text-[11px] text-neutral-500">{c.model}</div>
+                        
                       </button>
                     )}
                     <button
