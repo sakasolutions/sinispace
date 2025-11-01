@@ -17,7 +17,7 @@ export default function PaymentPage() {
     const body = [
       "Hallo Sinispace Team,",
       "",
-      "ich möchte den Pro-Plan (€99/Jahr) per Banküberweisung bestellen.",
+      "ich möchte den Pro-Plan (€99,90/Jahr) per Banküberweisung bestellen.",
       "",
       `Name: ${name || "—"}`,
       `E-Mail: ${email || "—"}`,
