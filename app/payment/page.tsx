@@ -57,7 +57,7 @@ export default function PaymentPage() {
             href={STRIPE_CHECKOUT_URL}
             className="mt-6 inline-flex items-center justify-center rounded-lg bg-black px-5 py-3 text-white font-medium hover:opacity-90"
           >
-            Jetzt mit Stripe bezahlen – €99/Jahr
+            Jetzt mit Stripe bezahlen – €99,90/Jahr
           </a>
 
           <p className="mt-3 text-xs text-zinc-500">
