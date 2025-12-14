@@ -21,10 +21,11 @@ const outputSchema = z.object({
   }),
 });
 
-// --- OpenAI-Client Initialisierung ---
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+function getOpenAI() {
+  const key = process.env.OPENAI_API_KEY;
+  if (!key) throw new Error("OPENAI_API_KEY fehlt");
+  return new OpenAI({ apiKey: key });
+}
 
 // --- Die POST-Funktion ---
 export async function POST(req: NextRequest) {
@@ -80,6 +81,10 @@ Deine Aufgabe ist es, einen E-Mail-Entwurf (Betreff und Textkörper) zu erstelle
 - **Empfänger-Kontext:** ${recipientContext}
 - **Ziel der E-Mail:** ${goal}
 - **Wichtige Stichpunkte, die enthalten sein müssen (falls vorhanden):** ${keyPoints || 'Keine spezifischen Stichpunkte vorgegeben.'}`;
+
+const openai = getOpenAI();
+
+
 
     // 3. OpenAI API aufrufen
     const response = await openai.chat.completions.create({
