@@ -41,7 +41,9 @@ function initializeFirebaseAdmin() {
   }
 
   // Prüfe ob wichtige Felder vorhanden sind (Raw-JSON verwendet snake_case)
-  if (!rawCredential.project_id || !rawCredential.private_key || !rawCredential.client_email) {
+  // Expliziter Type-Cast zu 'any', um TypeScript-Fehler zu vermeiden
+  const raw = rawCredential as any;
+  if (!raw.project_id || !raw.private_key || !raw.client_email) {
     const error = 'GCP_SA_B64 JSON fehlt wichtige Felder (project_id, private_key, client_email)';
     console.error('❌ [Firebase Admin]', error);
     throw new Error(error);
@@ -56,7 +58,7 @@ function initializeFirebaseAdmin() {
     admin.initializeApp({
       credential: admin.credential.cert(credentialObj),
     });
-    console.log('✅ [Firebase Admin] Erfolgreich initialisiert für Projekt:', rawCredential.project_id);
+    console.log('✅ [Firebase Admin] Erfolgreich initialisiert für Projekt:', raw.project_id);
     initialized = true;
   } catch (e: any) {
     const error = `Firebase Admin Initialisierung fehlgeschlagen: ${e.message}`;
