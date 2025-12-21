@@ -4,30 +4,62 @@ import admin from 'firebase-admin';
 let initialized = false;
 
 function initializeFirebaseAdmin() {
-  if (initialized || admin.apps.length > 0) return;
+  if (initialized || admin.apps.length > 0) {
+    console.log('✅ [Firebase Admin] Bereits initialisiert');
+    return;
+  }
 
   const b64 = process.env.GCP_SA_B64;
   if (!b64) {
-    throw new Error('GCP_SA_B64 is not set (base64-encoded service account JSON).');
+    const error = 'GCP_SA_B64 is not set (base64-encoded service account JSON).';
+    console.error('❌ [Firebase Admin]', error);
+    throw new Error(error);
   }
 
+  console.log('🔍 [Firebase Admin] Dekodiere Service Account...');
+  
   // Base64 -> JSON
-  const json = Buffer.from(b64, 'base64').toString('utf-8');
+  let json: string;
+  try {
+    json = Buffer.from(b64, 'base64').toString('utf-8');
+  } catch (e: any) {
+    const error = `GCP_SA_B64 Base64-Dekodierung fehlgeschlagen: ${e.message}`;
+    console.error('❌ [Firebase Admin]', error);
+    throw new Error(error);
+  }
 
   let credentialObj: admin.ServiceAccount;
   try {
     credentialObj = JSON.parse(json);
-  } catch (e) {
+    console.log('✅ [Firebase Admin] Service Account JSON geparst');
+  } catch (e: any) {
     // Häufige Ursache: falsches/abgeschnittenes Env
-    throw new Error('GCP_SA_B64 is not valid JSON. Check your env variable.');
+    const error = `GCP_SA_B64 is not valid JSON: ${e.message}. Check your env variable.`;
+    console.error('❌ [Firebase Admin]', error);
+    throw new Error(error);
   }
 
-  // Wichtig: kein Edge Runtime – dafür sorgst du in den Routen mit export const runtime = 'nodejs'
-  admin.initializeApp({
-    credential: admin.credential.cert(credentialObj),
-  });
+  // Prüfe ob wichtige Felder vorhanden sind
+  if (!credentialObj.project_id || !credentialObj.private_key || !credentialObj.client_email) {
+    const error = 'GCP_SA_B64 JSON fehlt wichtige Felder (project_id, private_key, client_email)';
+    console.error('❌ [Firebase Admin]', error);
+    throw new Error(error);
+  }
 
-  initialized = true;
+  console.log('🔍 [Firebase Admin] Initialisiere Firebase App...');
+  
+  // Wichtig: kein Edge Runtime – dafür sorgst du in den Routen mit export const runtime = 'nodejs'
+  try {
+    admin.initializeApp({
+      credential: admin.credential.cert(credentialObj),
+    });
+    console.log('✅ [Firebase Admin] Erfolgreich initialisiert für Projekt:', credentialObj.project_id);
+    initialized = true;
+  } catch (e: any) {
+    const error = `Firebase Admin Initialisierung fehlgeschlagen: ${e.message}`;
+    console.error('❌ [Firebase Admin]', error);
+    throw new Error(error);
+  }
 }
 
 export function getAdminAuth() {
