@@ -16,10 +16,12 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
 
   const router = useRouter();
-  const { status } = useSession();
+  const { status, update: updateSession } = useSession();
 
   useEffect(() => {
-    if (status === "authenticated") router.replace("/chat");
+    if (status === "authenticated") {
+      router.replace("/chat");
+    }
   }, [status, router]);
 
   async function onSubmit(e: React.FormEvent<HTMLFormElement>) {
@@ -35,15 +37,42 @@ export default function LoginPage() {
       const idToken = await userCredential.user.getIdToken();
 
       // 3) NextAuth Credentials-Provider mit ID Token
-      const result = await signIn("credentials", { idToken, redirect: false });
-      if (result?.error || !result?.ok) {
-        throw new Error(result?.error || "Server-Login fehlgeschlagen");
+      const result = await signIn("credentials", { 
+        idToken, 
+        redirect: false,
+        callbackUrl: "/chat"
+      });
+      
+      if (result?.error) {
+        throw new Error(result.error);
       }
 
-      // Weiterleitung übernimmt der useEffect nach Session-Aufbau
-    } catch (err) {
+      if (!result?.ok) {
+        throw new Error("Server-Login fehlgeschlagen");
+      }
+
+      // 4) Session explizit aktualisieren und auf Authentifizierung warten
+      await updateSession();
+      
+      // 5) Weiterleitung - useEffect wird die Session-Änderung erkennen
+      router.push("/chat");
+      router.refresh(); // Seite neu laden, um Session zu aktualisieren
+    } catch (err: any) {
       console.error("Login Fehler:", err);
-      setError("E-Mail oder Passwort ist falsch. Bitte versuche es erneut.");
+      let errorMessage = "E-Mail oder Passwort ist falsch. Bitte versuche es erneut.";
+      
+      // Spezifischere Fehlermeldungen
+      if (err.code === "auth/user-not-found" || err.code === "auth/wrong-password") {
+        errorMessage = "E-Mail oder Passwort ist falsch.";
+      } else if (err.code === "auth/invalid-email") {
+        errorMessage = "Ungültige E-Mail-Adresse.";
+      } else if (err.code === "auth/too-many-requests") {
+        errorMessage = "Zu viele fehlgeschlagene Versuche. Bitte versuche es später erneut.";
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
+      setError(errorMessage);
       setLoading(false);
     }
   }
