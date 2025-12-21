@@ -28,9 +28,10 @@ function initializeFirebaseAdmin() {
     throw new Error(error);
   }
 
-  let credentialObj: admin.ServiceAccount;
+  // Parse JSON - verwende 'any' für die Validierung, da das Raw-JSON snake_case verwendet
+  let rawCredential: any;
   try {
-    credentialObj = JSON.parse(json);
+    rawCredential = JSON.parse(json);
     console.log('✅ [Firebase Admin] Service Account JSON geparst');
   } catch (e: any) {
     // Häufige Ursache: falsches/abgeschnittenes Env
@@ -39,8 +40,8 @@ function initializeFirebaseAdmin() {
     throw new Error(error);
   }
 
-  // Prüfe ob wichtige Felder vorhanden sind
-  if (!credentialObj.project_id || !credentialObj.private_key || !credentialObj.client_email) {
+  // Prüfe ob wichtige Felder vorhanden sind (Raw-JSON verwendet snake_case)
+  if (!rawCredential.project_id || !rawCredential.private_key || !rawCredential.client_email) {
     const error = 'GCP_SA_B64 JSON fehlt wichtige Felder (project_id, private_key, client_email)';
     console.error('❌ [Firebase Admin]', error);
     throw new Error(error);
@@ -49,11 +50,13 @@ function initializeFirebaseAdmin() {
   console.log('🔍 [Firebase Admin] Initialisiere Firebase App...');
   
   // Wichtig: kein Edge Runtime – dafür sorgst du in den Routen mit export const runtime = 'nodejs'
+  // admin.credential.cert() konvertiert automatisch snake_case zu camelCase
   try {
+    const credentialObj: admin.ServiceAccount = rawCredential as admin.ServiceAccount;
     admin.initializeApp({
       credential: admin.credential.cert(credentialObj),
     });
-    console.log('✅ [Firebase Admin] Erfolgreich initialisiert für Projekt:', credentialObj.project_id);
+    console.log('✅ [Firebase Admin] Erfolgreich initialisiert für Projekt:', rawCredential.project_id);
     initialized = true;
   } catch (e: any) {
     const error = `Firebase Admin Initialisierung fehlgeschlagen: ${e.message}`;
