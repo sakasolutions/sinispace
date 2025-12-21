@@ -44,7 +44,14 @@ export default function LoginPage() {
       });
       
       if (result?.error) {
-        throw new Error(result.error);
+        // NextAuth Fehlercodes in benutzerfreundliche Nachrichten umwandeln
+        let errorMsg = result.error;
+        if (result.error === "CredentialsSignin") {
+          errorMsg = "Authentifizierung fehlgeschlagen. Bitte prüfe deine Zugangsdaten oder kontaktiere den Support.";
+        } else if (result.error === "Configuration") {
+          errorMsg = "Server-Konfigurationsfehler. Bitte kontaktiere den Support.";
+        }
+        throw new Error(errorMsg);
       }
 
       if (!result?.ok) {

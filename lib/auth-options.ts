@@ -17,37 +17,75 @@ export const authOptions: AuthOptions = {
       credentials: {},
       async authorize(credentials: any) {
         const idToken = credentials.idToken;
-        if (!idToken) return null;
+        if (!idToken) {
+          console.error("❌ [NextAuth] Kein ID Token erhalten");
+          return null;
+        }
 
         try {
           // Verwende die zentrale Firebase Admin Initialisierung
+          console.log("🔍 [NextAuth] Initialisiere Firebase Admin...");
           const adminAuth = getAdminAuth();
+          
+          console.log("🔍 [NextAuth] Verifiziere ID Token...");
           const decodedToken = await adminAuth.verifyIdToken(idToken);
-          console.log('✅ [NextAuth Authorize] Token verifiziert für E-Mail:', decodedToken.email);
+          console.log('✅ [NextAuth] Token verifiziert für E-Mail:', decodedToken.email);
 
-          if (!decodedToken || !decodedToken.email) return null;
+          if (!decodedToken || !decodedToken.email) {
+            console.error("❌ [NextAuth] Token enthält keine E-Mail");
+            return null;
+          }
 
-          // ===================================================================
-          // HIER IST DIE KORREKTUR: Dynamische Erstellung der Daten
-          // ===================================================================
-          
           // Erstelle oder aktualisiere den User in der Datenbank
-          const user = await prisma.user.upsert({
-            where: { email: decodedToken.email },
-            update: {
-              name: decodedToken.name || undefined,
-              image: decodedToken.picture || undefined,
-            },
-            create: {
-              email: decodedToken.email,
-              name: decodedToken.name || undefined,
-              image: decodedToken.picture || undefined,
-            },
-          });
+          console.log("🔍 [NextAuth] Erstelle/Aktualisiere User in Datenbank...");
           
+          // Versuche zuerst, den User zu finden
+          let user = await prisma.user.findUnique({
+            where: { email: decodedToken.email },
+          });
+
+          if (user) {
+            // User existiert, aktualisiere nur wenn Felder vorhanden sind
+            const updateData: any = {};
+            if (decodedToken.name) updateData.name = decodedToken.name;
+            if (decodedToken.picture) updateData.image = decodedToken.picture;
+            
+            if (Object.keys(updateData).length > 0) {
+              user = await prisma.user.update({
+                where: { email: decodedToken.email },
+                data: updateData,
+              });
+            }
+          } else {
+            // User existiert nicht, erstelle neuen
+            const createData: any = { email: decodedToken.email };
+            if (decodedToken.name) createData.name = decodedToken.name;
+            if (decodedToken.picture) createData.image = decodedToken.picture;
+            
+            user = await prisma.user.create({
+              data: createData,
+            });
+          }
+          
+          console.log("✅ [NextAuth] User erfolgreich erstellt/aktualisiert:", user.id);
           return user;
-        } catch (error) {
-          console.error("🔥 Firebase ID Token Verifizierungs-Fehler:", error);
+        } catch (error: any) {
+          console.error("🔥 [NextAuth] FEHLER in authorize:");
+          console.error("Fehler-Typ:", error?.constructor?.name);
+          console.error("Fehler-Message:", error?.message);
+          console.error("Fehler-Stack:", error?.stack);
+          
+          // Spezifische Fehlerbehandlung
+          if (error?.message?.includes("GCP_SA_B64")) {
+            console.error("❌ Firebase Admin Credentials fehlen (GCP_SA_B64)");
+          } else if (error?.message?.includes("verifyIdToken")) {
+            console.error("❌ Token-Verifizierung fehlgeschlagen");
+          } else if (error?.code === "P2002") {
+            console.error("❌ Datenbank-Constraint-Fehler (E-Mail bereits vorhanden)");
+          } else if (error?.code?.startsWith("P")) {
+            console.error("❌ Prisma-Fehler:", error.code);
+          }
+          
           return null;
         }
       },
